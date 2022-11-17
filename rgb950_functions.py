@@ -148,22 +148,23 @@ def animRMMD(rmmd, outputfilename = 'recent_animation'):
 
 
 def RetardanceVector(MM):
-    m00 = MM[0,0]
-    M = MM/m00
-    D = M[0,1:]
-    Dmag = np.linalg.norm(D)
-    mD = np.sqrt(1-Dmag**2)*np.identity(3) + (1-np.sqrt(1-Dmag**2))*np.outer(D/Dmag,D/Dmag)
-    MD=np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
-    Mprime = M@np.linalg.inv(MD)
-    [mR, mDelta] = slin.polar(Mprime[1:,1:])
-    MR = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((np.zeros(3)[:,np.newaxis],mR),axis=1)))
-    Tr = np.trace(MR)/2 -1
-    if Tr < -1:
-        Tr = -1
-    elif Tr > 1:
-        Tr = 1
-    R = np.arccos(Tr)
-    Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
+    G=np.array([[1,0,0,0],[0,-1,0,0],[0,0,-1,0],[0,0,0,-1]])
+    if any(isinstance(element, complex) for element in np.linalg.eig(G@(MM.T)@G@MM)[0]):
+        Rvec = np.array([np.nan,np.nan,np.nan])
+    else:
+        m00 = MM[0,0]
+        M = MM/m00
+        D = M[0,1:]
+        Dmag = np.linalg.norm(D)
+        mD = np.sqrt(1-Dmag**2)*np.identity(3) + (1-np.sqrt(1-Dmag**2))*np.outer(D/Dmag,D/Dmag)
+        MD=np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
+        Mprime = M@np.linalg.inv(MD)
+        [mR, mDeltaWrong] = slin.polar(Mprime[1:,1:])
+        mDelta = np.sign(np.linalg.det(Mprime[1:,1:]))*mR@mDeltaWrong@(mR.T)
+        MDelta = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((Mprime[1:,0][:,np.newaxis],mDelta),axis=1)))
+        MR = np.linalg.inv(MDelta)@Mprime
+        R = np.arccos(np.trace(MR)/2 -1)
+        Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
     return Rvec
 
 
