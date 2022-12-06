@@ -48,21 +48,30 @@ def window_main():
     Creates a pysimplegui window for the program.
     '''
     
-    # start with interior columns
-    # txts = [[sg.Text('X Freq Modifier:', expand_y=True)],
-    #         [sg.Text('Y Freq Modifier:', expand_y=True)]]
+    loading = [
+            [sg.Input('fileGot', key='fileGot', enable_events=True, visible=False), sg.FileBrowse('Select MM', target='fileGot', file_types=(('Mueller Matrix Files','.bin'),)), sg.Button('Raw Files', expand_x=True)]]
     
-    # slides = [[sg.Slider((1,9), default_value = 2, disable_number_display=True, expand_x=True, tick_interval=1, orientation='horizontal', enable_events=True, key='a')],
-    #           [sg.Slider((1,9), default_value = 3, disable_number_display=True, expand_x=True, tick_interval=1, orientation='horizontal', enable_events=True, key='b')]]
-    
-    # cluster columns and visualization canvas in frame for ~ a e s t h e t i c s ~
-    fra = [
-            [sg.FileBrowse('Select File', enable_events=True, ), sg.Button('Exit', expand_x=True)]]
+    mm_function_buttons = [
+        [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], [sg.Button('Linear Polarizance Orientation', expand_x=True, disabled=True)],
+        [sg.Button('Calc Retardance', expand_x=True, disabled=True)], 
+        [sg.ProgressBar(360, orientation='horizontal', visible=False, k='prog'), sg.Button('Lin Retardance Orientation', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
     
     # total layout for window
-    lay = [[sg.Frame('RGB950', fra)]]
+    lay = [[sg.Frame('Load Data', loading, expand_x=True)],
+           [sg.Frame('MM Plotting', mm_function_buttons, expand_x=True)],
+           [],]
               
-    return sg.Window('RGB950 Post Processing', layout=lay, resizable=True, finalize=True)
+    return sg.Window('RGB950 Post Processing', layout=lay, resizable=True, finalize=True, keep_on_top=True)
+
+
+def window_rmmd():
+    lay = [[sg.Input('rmmdLoad', key='rmmdLoad', enable_events=True, visible=False), sg.FileBrowse('Load RMMD File', target='rmmdLoad', file_types=(('RMMD', '.rmmd'),))],
+           [sg.Button('RMMD Video', expand_x=True, disabled=True)],
+           [sg.Button('Convert to MM Binary', expand_x=True, disabled=True)],]
+    
+    return sg.Window('RMMD Files', layout=lay, resizable=True, finalize=True, keep_on_top=True)
+
+
 
 win = window_main()
 
@@ -74,10 +83,69 @@ while True:
     
     # begin with exit protocol before other events
     if event == sg.WIN_CLOSED or event == 'Exit':
+        if window == win:
+            
+            window.close()
+            break
         
-        win.close()
-        break
+        else:
+            window.close()
     
+    elif event == 'fileGot':
+        
+        mm = rgb.readMMbin(values['fileGot'])
+        
+        print('Mueller Matrix Loaded')
+        window['Mueller Matrix Plot'].update(disabled=False)
+        window['Linear Polarizance Orientation'].update(disabled=False)
+        window['Calc Retardance'].update(disabled=False)
+        
+    
+        
+    elif event == 'Mueller Matrix Plot':
+        rgb.MMImagePlot(mm, -1, 1)
+    
+    elif event == 'Linear Polarizance Orientation':
+        rgb.plot_lin_pol_ori(mm)
+        
+    elif event == 'Calc Retardance':
+        window['prog'].update(visible=True)
+        window['Mueller Matrix Plot'].update(disabled=True)
+        window['Linear Polarizance Orientation'].update(disabled=True)
+        window['Calc Retardance'].update(disabled=True)
+        mm = mm.reshape([4,4,360_000])
+        ret_vec = np.zeros([360_000, 3])
+        for ii in np.arange(0, 360_000):
+            ret_vec[ii,:] = rgb.RetardanceVector(mm[:,:,ii])
+            if ii % 1000 == 0:
+                window['prog'].update(current_count=ii//1000)
+        mm = mm.reshape(16, 600, 600)
+        window['prog'].update(current_count=0, visible=False)
+        window['Mueller Matrix Plot'].update(disabled=False)
+        window['Linear Polarizance Orientation'].update(disabled=False)
+        window['Calc Retardance'].update(disabled=False)
+        window['Lin Retardance Orientation'].update(visible=True)
+        window['Retardance Magnitude'].update(visible=True)
+        
+    elif event == 'Lin Retardance Orientation':
+        rgb.plot_retardance_linear(ret_vec)
+        
+    elif event == 'Retardance Magnitude':
+        rgb.plot_retardance_mag(ret_vec)
+        
+    elif event == 'Raw Files':
+        rmmd_win = window_rmmd()
+    
+    elif event == 'rmmdLoad':
+        rmmdName = values['rmmdLoad'].split('/')[-1].strip('.rmmd')
+        rmmd = rgb.readRMMD(values['rmmdLoad'])
+        
+        window['RMMD Video'].update(disabled=False)
+        window['Convert to MM Binary'].update(disabled=False)
+        
+    elif event == 'RMMD Video':
+        rmmdVidName = values['rmmdLoad'].split('/')[-1]
+        ani = rgb.animRMMD(rmmd, rmmdName)
     
     else:
         print(event)

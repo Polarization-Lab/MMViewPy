@@ -2,7 +2,7 @@
 """
 Created on Wed Sep 14 11:46:23 2022
 
-@author: qjare
+@authors: qjare, forschner
 """
 
 import numpy as np
@@ -92,7 +92,7 @@ def readMMbin(inputfilename):
     return M
 
 def MMImagePlot(MM,minval,maxval, title=''):
-    f, axarr = plt.subplots(nrows = 4,ncols = 4,figsize=(6, 5), constrained_layout=True)
+    f, axarr = plt.subplots(nrows = 4,ncols = 4,figsize=(6, 5))
     f.suptitle(title, fontsize=20)
     
     MM = MM.reshape([4,4,600,600])
@@ -141,34 +141,33 @@ def animRMMD(rmmd, outputfilename = 'recent_animation'):
     im = ax.imshow(rmmd[0], animated=True)
     fig.colorbar(im)
     ani = anim.FuncAnimation(fig, updateAnim, 40, fargs=(rmmd, im, ax))
-    ani.save('./data/{}.mp4'.format(outputfilename), writer = FFwriter)
+    ani.save('./rmmd_videos/{}.mp4'.format(outputfilename), writer = FFwriter)
     return ani
 
     
 
 
 def RetardanceVector(MM):
-    G=np.array([[1,0,0,0],[0,-1,0,0],[0,0,-1,0],[0,0,0,-1]])
-    if any(isinstance(element, complex) for element in np.linalg.eig(G@(MM.T)@G@MM)[0]):
-        Rvec = np.array([np.nan,np.nan,np.nan])
-    else:
-        m00 = MM[0,0]
-        M = MM/m00
-        D = M[0,1:]
-        Dmag = np.linalg.norm(D)
-        mD = np.sqrt(1-Dmag**2)*np.identity(3) + (1-np.sqrt(1-Dmag**2))*np.outer(D/Dmag,D/Dmag)
-        MD=np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
-        Mprime = M@np.linalg.inv(MD)
-        [mR, mDeltaWrong] = slin.polar(Mprime[1:,1:])
-        mDelta = np.sign(np.linalg.det(Mprime[1:,1:]))*mR@mDeltaWrong@(mR.T)
-        MDelta = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((Mprime[1:,0][:,np.newaxis],mDelta),axis=1)))
-        MR = np.linalg.inv(MDelta)@Mprime
-        R = np.arccos(np.trace(MR)/2 -1)
-        Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
+    m00 = MM[0,0]
+    M = MM/m00
+    D = M[0,1:]
+    Dmag = np.linalg.norm(D)
+    mD = np.sqrt(1-Dmag**2)*np.identity(3) + (1-np.sqrt(1-Dmag**2))*np.outer(D/Dmag,D/Dmag)
+    MD=np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
+    Mprime = M@np.linalg.inv(MD)
+    [mR, mDelta] = slin.polar(Mprime[1:,1:])
+    MR = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((np.zeros(3)[:,np.newaxis],mR),axis=1)))
+    Tr = np.trace(MR)/2 -1
+    if Tr < -1:
+        Tr = -1
+    elif Tr > 1:
+        Tr = 1
+    R = np.arccos(Tr)
+    Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
     return Rvec
 
 
-def lin_pol_ori(MM, cmap='twilight_shifted'):
+def plot_lin_pol_ori(MM, cmap='twilight_shifted'):
     mag, lin = get_polarizance(MM)
     fig = plt.figure()
     ax = plt.subplot()
@@ -178,3 +177,32 @@ def lin_pol_ori(MM, cmap='twilight_shifted'):
     im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
     cb = fig.colorbar(im, )
     cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
+
+def plot_retardance_linear(ret_vec):
+    
+    ret_vec = ret_vec.reshape([600, 600, 3])
+    
+    fig = plt.figure()
+    ax = plt.subplot()
+    ax.set_title('Linear Retardance')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    im = ax.imshow(ret_vec[:,:,0], cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
+    cb = fig.colorbar(im,)
+    cb.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
+
+def plot_retardance_mag(ret_vec):
+    
+    ret_mag = np.zeros([360_000])
+    for jj in range(len(ret_mag)):
+        ret_mag[jj] = np.linalg.norm(ret_vec[jj,:])
+    ret_mag = ret_mag.reshape([600, 600])
+    
+    fig = plt.figure()
+    ax = plt.subplot()
+    ax.set_title('Retardance Magnitude')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    im = ax.imshow(ret_mag, cmap='turbo', vmin = 0, vmax = np.pi, interpolation='none')
+    cb = fig.colorbar(im,)
+    cb.ax.set_yticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi], ['0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$', r'$\frac{3 \pi}{4}$', r'$\pi$'], fontsize=12)
