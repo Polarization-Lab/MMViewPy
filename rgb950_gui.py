@@ -39,6 +39,8 @@ wv_451 = [13.41, 143.13, -0.53, -17.02, 130.01]
 wv_524 = [13.41, 120.00, -0.53, -17.02, 124.55]
 wv_662 = [13.41, 94.780, -0.53, -17.02, 127.12]
 
+wv_dict = {'451nm':wv_451, '524nm':wv_524, '662nm':wv_662, '947nm':wv_947}
+
 normal = np.ones([16,600,600])
 normal[0,:,:] = 0
 
@@ -54,20 +56,24 @@ def window_main():
     mm_function_buttons = [
         [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], [sg.Button('Linear Polarizance Orientation', expand_x=True, disabled=True)],
         [sg.Button('Calc Retardance', expand_x=True, disabled=True)], 
-        [sg.ProgressBar(360, orientation='horizontal', visible=False, k='prog'), sg.Button('Lin Retardance Orientation', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
+        [sg.ProgressBar(360, orientation='horizontal', s=(20,1), visible=False, k='prog'), sg.Button('Lin Retardance Orientation', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
     
     # total layout for window
     lay = [[sg.Frame('Load Data', loading, expand_x=True)],
            [sg.Frame('MM Plotting', mm_function_buttons, expand_x=True)],
-           [],]
+           [sg.Multiline(autoscroll=True, s = (60, 6), k='text_window', no_scrollbar=True, reroute_cprint=True, echo_stdout_stderr=True, )],]
               
     return sg.Window('RGB950 Post Processing', layout=lay, resizable=True, finalize=True, keep_on_top=True)
 
 
 def window_rmmd():
+    
+    conv = [[sg.Text('Wavelength'), sg.Combo(['451nm','524nm', '662nm', '947nm'], default_value='947nm', k='rmmd_wv')],
+            [sg.Button('Convert to MM Binary', expand_x=True, disabled=True, k='rmmd_conv')]]
+    
     lay = [[sg.Input('rmmdLoad', key='rmmdLoad', enable_events=True, visible=False), sg.FileBrowse('Load RMMD File', target='rmmdLoad', file_types=(('RMMD', '.rmmd'),))],
            [sg.Button('RMMD Video', expand_x=True, disabled=True)],
-           [sg.Button('Convert to MM Binary', expand_x=True, disabled=True)],]
+           [sg.Frame('Conversion', conv)],]
     
     return sg.Window('RMMD Files', layout=lay, resizable=True, finalize=True, keep_on_top=True)
 
@@ -113,6 +119,8 @@ while True:
         window['Mueller Matrix Plot'].update(disabled=True)
         window['Linear Polarizance Orientation'].update(disabled=True)
         window['Calc Retardance'].update(disabled=True)
+        window['Lin Retardance Orientation'].update(visible=False)
+        window['Retardance Magnitude'].update(visible=False)
         mm = mm.reshape([4,4,360_000])
         ret_vec = np.zeros([360_000, 3])
         for ii in np.arange(0, 360_000):
@@ -141,11 +149,14 @@ while True:
         rmmd = rgb.readRMMD(values['rmmdLoad'])
         
         window['RMMD Video'].update(disabled=False)
-        window['Convert to MM Binary'].update(disabled=False)
+        window['rmmd_conv'].update(disabled=False)
         
     elif event == 'RMMD Video':
         rmmdVidName = values['rmmdLoad'].split('/')[-1]
         ani = rgb.animRMMD(rmmd, rmmdName)
+        
+    elif event == 'rmmd_conv':
+        rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(rmmdName), wv=wv_dict[values['rmmd_wv']])
     
     else:
         print(event)
