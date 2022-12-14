@@ -146,6 +146,12 @@ def animRMMD(rmmd, outputfilename = 'recent_animation'):
 
     
 
+def get_diattenuation(MM):
+    D = MM[(0,4,8,12), :, :]
+    Dmag = np.linalg.norm(D[1:,:,:], axis=0)/D[0,:,:]
+    DLO = np.arctan2(D[1,:,:], D[0,:,:])
+    return Dmag, DLO
+
 
 def RetardanceVector(MM):
     m00 = MM[0,0]
@@ -167,11 +173,35 @@ def RetardanceVector(MM):
     return Rvec
 
 
+def plot_diat_mag(MM):
+    mag, lin = get_diattenuation(MM)
+    
+    fig = plt.figure()
+    ax = plt.subplot()
+    ax.set_title('Diattenuation Magnitude')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    im = ax.imshow(mag, cmap='turbo', vmin = 0, vmax = 1, interpolation='none')
+    cb = fig.colorbar(im,)
+
+
+def plot_lin_diat_ori(MM, cmap='twilight_shifted'):
+    mag, lin = get_diattenuation(MM)
+    fig = plt.figure()
+    ax = plt.subplot()
+    ax.set_title('Linear Diattenuation Orientation')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
+    cb = fig.colorbar(im, )
+    cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
+
+
 def plot_lin_pol_ori(MM, cmap='twilight_shifted'):
     mag, lin = get_polarizance(MM)
     fig = plt.figure()
     ax = plt.subplot()
-    ax.set_title('Face Linear Polarizance Orientation')
+    ax.set_title('Linear Polarizance Orientation')
     ax.set_xticks([])
     ax.set_yticks([])
     im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')

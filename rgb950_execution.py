@@ -44,26 +44,16 @@ normal[0,:,:] = 0
 '''
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Execution below~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 '''
-m = 'mo_eyes_close_3'
+m = '20221209_A'
 # rmmd = rgb.readRMMD('./data/{}.rmmd'.format(m))
 # rgb.makeRMMDbin('./data/{}.rmmd'.format(m), '{}.bin'.format(m), wv_947)
 
 # mov = rgb.animRMMD(rmmd, '{}'.format(m))
 
-mo = rgb.readMMbin('{}.bin'.format(m))
+mo = rgb.readMMbin('./data/{}.bin'.format(m))
+md = mo[(4,8,12), :, :]
+dmag, dlin = rgb.get_diattenuation(mo)
 
-
-mo = mo.reshape([4,4,360000])
-moRet = np.zeros([360000, 3])
-for ii in np.arange(0, 360000):
-    moRet[ii,:] = rgb.RetardanceVector(mo[:,:,ii])
-
-moRet = moRet.reshape([600, 600, 3])
-# rgb.MMImagePlot(mo, -1, 1)
-
-fig = plt.figure()
-im = plt.imshow(moRet[:,:,0], cmap=colmap, vmin = -np.pi, vmax = np.pi, interpolation='none')
-cbar = fig.colorbar(im,)
 # mo = mo/mo[0,0,:,:]
 
 # rgb.lin_pol_ori(mo)
