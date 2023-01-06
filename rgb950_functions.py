@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.colors import ListedColormap
 from rgb950_reconstruction import W_mat
+
 import scipy.linalg as slin
 
 plt.rcParams['animation.ffmpeg_path'] ='C:\\ffmpeg\\bin\\ffmpeg.exe'
@@ -146,12 +147,6 @@ def animRMMD(rmmd, outputfilename = 'recent_animation'):
 
     
 
-def get_diattenuation(MM):
-    D = MM[(0,4,8,12), :, :]
-    Dmag = np.linalg.norm(D[1:,:,:], axis=0)/D[0,:,:]
-    DLO = np.arctan2(D[1,:,:], D[0,:,:])
-    return Dmag, DLO
-
 
 def RetardanceVector(MM):
     m00 = MM[0,0]
@@ -173,40 +168,17 @@ def RetardanceVector(MM):
     return Rvec
 
 
-def plot_diat_mag(MM):
-    mag, lin = get_diattenuation(MM)
-    
-    fig = plt.figure()
-    ax = plt.subplot()
-    ax.set_title('Diattenuation Magnitude')
-    ax.set_xticks([])
-    ax.set_yticks([])
-    im = ax.imshow(mag, cmap='turbo', vmin = 0, vmax = 1, interpolation='none')
-    cb = fig.colorbar(im,)
-
-
-def plot_lin_diat_ori(MM, cmap='twilight_shifted'):
-    mag, lin = get_diattenuation(MM)
-    fig = plt.figure()
-    ax = plt.subplot()
-    ax.set_title('Linear Diattenuation Orientation')
-    ax.set_xticks([])
-    ax.set_yticks([])
-    im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
-    cb = fig.colorbar(im, )
-    cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
-
-
 def plot_lin_pol_ori(MM, cmap='twilight_shifted'):
     mag, lin = get_polarizance(MM)
     fig = plt.figure()
     ax = plt.subplot()
-    ax.set_title('Linear Polarizance Orientation')
+    ax.set_title('Face Linear Polarizance Orientation')
     ax.set_xticks([])
     ax.set_yticks([])
     im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
     cb = fig.colorbar(im, )
     cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
+    return fig
 
 def plot_retardance_linear(ret_vec):
     
@@ -220,6 +192,7 @@ def plot_retardance_linear(ret_vec):
     im = ax.imshow(ret_vec[:,:,0], cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
     cb = fig.colorbar(im,)
     cb.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
+    return fig
 
 def plot_retardance_mag(ret_vec):
     
@@ -236,3 +209,4 @@ def plot_retardance_mag(ret_vec):
     im = ax.imshow(ret_mag, cmap='turbo', vmin = 0, vmax = np.pi, interpolation='none')
     cb = fig.colorbar(im,)
     cb.ax.set_yticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi], ['0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$', r'$\frac{3 \pi}{4}$', r'$\pi$'], fontsize=12)
+    return fig

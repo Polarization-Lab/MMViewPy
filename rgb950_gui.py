@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.colors import ListedColormap
 import rgb950_functions as rgb
+import cloude_decomp_functions as cdf
 import scipy.linalg as slin
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import PySimpleGUI as sg
@@ -39,11 +40,17 @@ wv_451 = [13.41, 143.13, -0.53, -17.02, 130.01]
 wv_524 = [13.41, 120.00, -0.53, -17.02, 124.55]
 wv_662 = [13.41, 94.780, -0.53, -17.02, 127.12]
 
-wv_dict = {'451nm':wv_451, '524nm':wv_524, '662nm':wv_662, '947nm':wv_947}
-
 normal = np.ones([16,600,600])
 normal[0,:,:] = 0
 
+eigBasis = 0
+mmBasis = 0
+
+def draw_figure(canvas, figure):
+    figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
+    figure_canvas_agg.draw()
+    figure_canvas_agg.get_tk_widget().pack(side="top", fill="both", expand=1)
+    return figure_canvas_agg
 
 def window_main():
     '''
@@ -55,30 +62,30 @@ def window_main():
     
     mm_function_buttons = [
         [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], [sg.Button('Linear Polarizance Orientation', expand_x=True, disabled=True)],
-        [sg.Button('Diattenuation Magnitude', expand_x=True, disabled=True), sg.Button('Linear Diattenuation Orientation', expand_x=True, disabled=True)],
         [sg.Button('Calc Retardance', expand_x=True, disabled=True)], 
-        [sg.ProgressBar(360, orientation='horizontal', s=(37,1), visible=False, k='prog'), sg.Button('Lin Retardance Orientation', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
+        [sg.Button('Cloude Decomposition', expand_x=True, disabled=True)],
+        [sg.ProgressBar(360, orientation='horizontal', visible=False, k='prog')], 
+        [sg.Button('Lin Retardance Orientation', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
     
     # total layout for window
     lay = [[sg.Frame('Load Data', loading, expand_x=True)],
            [sg.Frame('MM Plotting', mm_function_buttons, expand_x=True)],
-           [sg.Multiline(autoscroll=True, s = (60, 6), k='text_window', no_scrollbar=True, reroute_cprint=True, echo_stdout_stderr=True, )],]
+           [],]
               
-    return sg.Window('RGB950 Post Processing', layout=lay, resizable=True, finalize=True)
+    return sg.Window('RGB950 Post Processing', layout=lay, resizable=True, finalize=True, keep_on_top=True)
 
 
 def window_rmmd():
-    
-    conv = [[sg.Text('Wavelength'), sg.Combo(['451nm','524nm', '662nm', '947nm'], default_value='947nm', k='rmmd_wv')],
-            [sg.Button('Convert to MM Binary', expand_x=True, disabled=True, k='rmmd_conv')]]
-    
     lay = [[sg.Input('rmmdLoad', key='rmmdLoad', enable_events=True, visible=False), sg.FileBrowse('Load RMMD File', target='rmmdLoad', file_types=(('RMMD', '.rmmd'),))],
            [sg.Button('RMMD Video', expand_x=True, disabled=True)],
-           [sg.Frame('Conversion', conv)],]
+           [sg.Button('Convert to MM Binary', expand_x=True, disabled=True)],]
     
-    return sg.Window('RMMD Files', layout=lay, resizable=True, finalize=True)
+    return sg.Window('RMMD Files', layout=lay, resizable=True, finalize=True, keep_on_top=True)
 
-
+def window_fig():
+    lay = [[sg.Canvas(k='-CANVAS-')]]
+    
+    return sg.Window('Eigenvalues', lay, finalize=True, element_justification='center')
 
 win = window_main()
 
@@ -101,13 +108,13 @@ while True:
     elif event == 'fileGot':
         
         mm = rgb.readMMbin(values['fileGot'])
-        
+        eigBasis = 0
+        mmBasis = 0
         print('Mueller Matrix Loaded')
         window['Mueller Matrix Plot'].update(disabled=False)
         window['Linear Polarizance Orientation'].update(disabled=False)
         window['Calc Retardance'].update(disabled=False)
-        window['Linear Diattenuation Orientation'].update(disabled=False)
-        window['Diattenuation Magnitude'].update(disabled=False)
+        window['Cloude Decomposition'].update(disabled=False)
         
     
         
@@ -116,19 +123,40 @@ while True:
     
     elif event == 'Linear Polarizance Orientation':
         rgb.plot_lin_pol_ori(mm)
+    
+    elif event == 'Cloude Decomposition':
+        if eigBasis == 0 & mmBasis == 0:
+            window['Mueller Matrix Plot'].update(disabled=True)
+            window['Linear Polarizance Orientation'].update(disabled=True)
+            window['Calc Retardance'].update(disabled=True)
+            window['Cloude Decomposition'].update(disabled=True)
+            
+            eigBasis, mmBasis = cdf.cloudeDecompbig(mm)
+            
+            window['Mueller Matrix Plot'].update(disabled=False)
+            window['Linear Polarizance Orientation'].update(disabled=False)
+            window['Calc Retardance'].update(disabled=False)
+            window['Cloude Decomposition'].update(disabled=False)
         
+        eigFig, axs = plt.subplots(2, 2)
+        axs = axs.reshape((4))
+        for i in range(4):
+            axs[i].imshow(eigBasis[i,:,:])
+            axs[i].set_xticks([])
+            axs[i].set_yticks([])
+            axs[i].set_title('Eigenvalue: {}'.format(i+1))
+            
+        winfig = window_fig()
+        
+        draw_figure(winfig["-CANVAS-"].TKCanvas, eigFig)
+        
+    
     elif event == 'Calc Retardance':
         window['prog'].update(visible=True)
-        
         window['Mueller Matrix Plot'].update(disabled=True)
         window['Linear Polarizance Orientation'].update(disabled=True)
         window['Calc Retardance'].update(disabled=True)
-        window['Linear Diattenuation Orientation'].update(disabled=True)
-        window['Diattenuation Magnitude'].update(disabled=True)
-        
-        window['Lin Retardance Orientation'].update(visible=False)
-        window['Retardance Magnitude'].update(visible=False)
-        
+        window['Cloude Decomposition'].update(disabled=True)
         mm = mm.reshape([4,4,360_000])
         ret_vec = np.zeros([360_000, 3])
         for ii in np.arange(0, 360_000):
@@ -137,13 +165,10 @@ while True:
                 window['prog'].update(current_count=ii//1000)
         mm = mm.reshape(16, 600, 600)
         window['prog'].update(current_count=0, visible=False)
-        
         window['Mueller Matrix Plot'].update(disabled=False)
         window['Linear Polarizance Orientation'].update(disabled=False)
-        window['Linear Diattenuation Orientation'].update(disabled=False)
-        window['Diattenuation Magnitude'].update(disabled=False)
         window['Calc Retardance'].update(disabled=False)
-        
+        window['Cloude Decomposition'].update(disabled=False)
         window['Lin Retardance Orientation'].update(visible=True)
         window['Retardance Magnitude'].update(visible=True)
         
@@ -153,30 +178,19 @@ while True:
     elif event == 'Retardance Magnitude':
         rgb.plot_retardance_mag(ret_vec)
         
-    elif event == 'Diattenuation Magnitude':
-        rgb.plot_diat_mag(mm)
-    
-    elif event == 'Linear Diattenuation Orientation':
-        rgb.plot_lin_diat_ori(mm)
-    
     elif event == 'Raw Files':
         rmmd_win = window_rmmd()
     
     elif event == 'rmmdLoad':
-        rmmdName = values['rmmdLoad'].split('/')[-1]
-        rmmdName = rmmdName[:-5]
+        rmmdName = values['rmmdLoad'].split('/')[-1].strip('.rmmd')
         rmmd = rgb.readRMMD(values['rmmdLoad'])
-        print('Loaded {}\n'.format(rmmdName))
-        print(values['rmmdLoad'])
+        
         window['RMMD Video'].update(disabled=False)
-        window['rmmd_conv'].update(disabled=False)
+        window['Convert to MM Binary'].update(disabled=False)
         
     elif event == 'RMMD Video':
-        
+        rmmdVidName = values['rmmdLoad'].split('/')[-1]
         ani = rgb.animRMMD(rmmd, rmmdName)
-        
-    elif event == 'rmmd_conv':
-        rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(rmmdName), wv=wv_dict[values['rmmd_wv']])
     
     else:
         print(event)
