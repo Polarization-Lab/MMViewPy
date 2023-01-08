@@ -46,9 +46,18 @@ normal[0,:,:] = 0
 eigBasis = 0
 mmBasis = 0
 
+def callb_click(event):
+    print('click at {} {}'.format(event.x, event.y))
+    
+def callb_ax(event):
+    for i in range(4):
+        if event.inaxes == axs[i]:
+            rgb.MMImagePlot(mmBasis[i], -1, 1, 'Mueller Matrix for Eigenvalue {}'.format(i+1))
+
 def draw_figure(canvas, figure):
     figure_canvas_agg = FigureCanvasTkAgg(figure, canvas)
     figure_canvas_agg.draw()
+    figure_canvas_agg.get_tk_widget().bind("<Button-1>", callb_click)
     figure_canvas_agg.get_tk_widget().pack(side="top", fill="both", expand=1)
     return figure_canvas_agg
 
@@ -64,6 +73,7 @@ def window_main():
         [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], [sg.Button('Linear Polarizance Orientation', expand_x=True, disabled=True)],
         [sg.Button('Calc Retardance', expand_x=True, disabled=True)], 
         [sg.Button('Cloude Decomposition', expand_x=True, disabled=True)],
+        [sg.Input('ClDc_save', key='ClDc_save', enable_events=True, visible=False), sg.FileSaveAs('Save Cloude Decomp', target = 'ClDc_save', file_types=(('Binary Files', '.bin'),), visible=False)],
         [sg.ProgressBar(360, orientation='horizontal', visible=False, k='prog')], 
         [sg.Button('Lin Retardance Orientation', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
     
@@ -85,7 +95,7 @@ def window_rmmd():
 def window_fig():
     lay = [[sg.Canvas(k='-CANVAS-')]]
     
-    return sg.Window('Eigenvalues', lay, finalize=True, element_justification='center')
+    return sg.Window('Graph', lay, finalize=True, element_justification='center')
 
 win = window_main()
 
@@ -110,7 +120,8 @@ while True:
         mm = rgb.readMMbin(values['fileGot'])
         eigBasis = 0
         mmBasis = 0
-        print('Mueller Matrix Loaded')
+        window['Save Cloude Decomp'].update(visible=False)
+        # print('Mueller Matrix Loaded')
         window['Mueller Matrix Plot'].update(disabled=False)
         window['Linear Polarizance Orientation'].update(disabled=False)
         window['Calc Retardance'].update(disabled=False)
@@ -132,11 +143,12 @@ while True:
             window['Cloude Decomposition'].update(disabled=True)
             
             eigBasis, mmBasis = cdf.cloudeDecompbig(mm)
-            
+                
             window['Mueller Matrix Plot'].update(disabled=False)
             window['Linear Polarizance Orientation'].update(disabled=False)
             window['Calc Retardance'].update(disabled=False)
             window['Cloude Decomposition'].update(disabled=False)
+            window['Save Cloude Decomp'].update(visible=True)
         
         eigFig, axs = plt.subplots(2, 2)
         axs = axs.reshape((4))
@@ -145,11 +157,19 @@ while True:
             axs[i].set_xticks([])
             axs[i].set_yticks([])
             axs[i].set_title('Eigenvalue: {}'.format(i+1))
-            
-        winfig = window_fig()
         
-        draw_figure(winfig["-CANVAS-"].TKCanvas, eigFig)
+        eigFig.tight_layout()
+        eigFig.canvas.mpl_connect('button_press_event', callb_ax)
         
+        # For future inline plot implementaton
+        # winfig = window_fig()
+        # draw_figure(winfig["-CANVAS-"].TKCanvas, eigFig)
+        
+    
+    elif event == 'ClDc_save':
+        eigName = values['Save Cloude Decomp'].split('/')[-1].strip('.bin')
+        eigBasis.tofile('./data/{}_eigenvalues.bin'.format(eigName))
+        mmBasis.tofile('./data/{}_mmBasis.bin'.format(eigName))
     
     elif event == 'Calc Retardance':
         window['prog'].update(visible=True)

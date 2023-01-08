@@ -178,7 +178,7 @@ def plot_lin_pol_ori(MM, cmap='twilight_shifted'):
     im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
     cb = fig.colorbar(im, )
     cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
-    return fig
+    
 
 def plot_retardance_linear(ret_vec):
     
@@ -192,7 +192,7 @@ def plot_retardance_linear(ret_vec):
     im = ax.imshow(ret_vec[:,:,0], cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
     cb = fig.colorbar(im,)
     cb.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
-    return fig
+    
 
 def plot_retardance_mag(ret_vec):
     
@@ -209,4 +209,4 @@ def plot_retardance_mag(ret_vec):
     im = ax.imshow(ret_mag, cmap='turbo', vmin = 0, vmax = np.pi, interpolation='none')
     cb = fig.colorbar(im,)
     cb.ax.set_yticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi], ['0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$', r'$\frac{3 \pi}{4}$', r'$\pi$'], fontsize=12)
-    return fig
+    
