@@ -168,11 +168,12 @@ def RetardanceVector(MM):
     return Rvec
 
 
-def plot_lin_pol_ori(MM, cmap='twilight_shifted'):
+def plot_lin_pol_ori(MM, cmap='hsv', axtitle = 'AoLP'):
+    MM = MM.reshape(16, 600, 600)
     mag, lin = get_polarizance(MM)
     fig = plt.figure()
     ax = plt.subplot()
-    ax.set_title('Face Linear Polarizance Orientation')
+    ax.set_title(axtitle)
     ax.set_xticks([])
     ax.set_yticks([])
     im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
