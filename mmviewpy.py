@@ -64,11 +64,11 @@ def window_main():
     Creates a pysimplegui window for the program.
     '''
     
-    select = [[sg.Input('rmmdLoad', key='rmmdLoad', enable_events=True, visible=False), sg.FileBrowse('Load RMMD File', target='rmmdLoad', file_types=(('RMMD', '.rmmd'),))],
+    select = [[sg.Input('rmmdLoad', key='rmmdLoad', enable_events=True, visible=False), sg.FileBrowse('RGB950 File', target='rmmdLoad', file_types=(('RMMD', '.rmmd'),('CMMI', '.cmmi')))],
               [sg.Input('fileGot', key='fileGot', enable_events=True, visible=False), sg.FileBrowse('Select MMbinary', target='fileGot', file_types=(('Mueller Matrix Files','.bin'),))]]
     
     export = [[sg.Button('Export Data', k='export_button', expand_x=True)],
-              [sg.Combo(('Retardance Vector', 'Cloude Decomposition', ''), k='export_combo', readonly=True)],]
+              [sg.Combo(('Retardance Vector', 'Cloude Decomposition', 'Cloude Dominant Process', ''), k='export_combo', readonly=True)],]
         
     loading = [[sg.Column(select), sg.Column(export)]]
     
@@ -207,13 +207,23 @@ while True:
         rmmd_win = window_rmmd()
     
     elif event == 'rmmdLoad':
-        rmmdName = values['rmmdLoad'].split('/')[-1].strip('.rmmd')
-        rmmd = rgb.readRMMD(values['rmmdLoad'])
         
-        rmmdVidName = values['rmmdLoad'].split('/')[-1]
-        ani = rgb.animRMMD(rmmd, rmmdName)
+        filePath = values['rmmdLoad'].split('/')
+        fileName = filePath[-1]
         
-        rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(rmmdName))
+        
+        if fileName[-4:] == 'rmmd':
+            fileName = fileName.strip('.rmmd')
+            rmmd = rgb.readRMMD(values['rmmdLoad'])
+            
+            rmmdVidName = values['rmmdLoad'].split('/')[-1]
+            ani = rgb.animRMMD(rmmd, fileName)
+            
+            rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(fileName))
+        elif fileName[-4:] == 'cmmi':
+            fileName = fileName.strip('.cmmi')
+            cmmi = rgb.makeMMbin(values['rmmdLoad'], './data/{}.bin'.format(fileName))
+        
         
     elif event == 'export_button':
         if values['export_combo'] == 'Retardance Vector':
@@ -223,6 +233,10 @@ while True:
             if data_loaded['Cloude Decomposition']:
                 eigBasis.tofile('./data/{}_eigenvalues.bin'.format(mmName))
                 mmBasis.tofile('./data/{}_mmBasis.bin'.format(mmName))
+                
+        elif values['export_combo'] == 'Cloude Dominant Process':
+            if data_loaded['Cloude Decomposition']:
+                mmBasis[0].tofile('./data/{}_mmDominant.bin'.format(mmName))
         
     else:
         print(event)
