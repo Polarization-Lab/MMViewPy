@@ -44,6 +44,14 @@ normal = np.ones([16,600,600])
 normal[0,:,:] = 0
 data_loaded = {'Retardance Vector' : 0, 'Cloude Decomposition' : 0}
 new_mm = 0
+
+
+sphere_mask = np.zeros([16,600,600])
+sphere_mask[0,:,:] = 1
+for xi in range(600):
+    for yi in range (600):
+        if np.sqrt((xi-265)**2 + (yi-293)**2) < 190:
+            sphere_mask[1:,xi, yi] = 1
 def callb_click(event):
     print('click at {} {}'.format(event.x, event.y))
     
@@ -122,6 +130,14 @@ while True:
         
         mm = rgb.readMMbin(values['fileGot'])
         mmName = values['fileGot'].split('/')[-1].strip('.bin')
+        
+        mmNList = mmName.split('_')
+        if mmNList[1] == 'sphere':
+            
+            mm = mm * sphere_mask
+        
+        
+        
         new_mm = 1
         # print('Mueller Matrix Loaded')
         window['Mueller Matrix Plot'].update(disabled=False)
