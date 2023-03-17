@@ -44,14 +44,6 @@ normal = np.ones([16,600,600])
 normal[0,:,:] = 0
 data_loaded = {'Retardance Vector' : 0, 'Cloude Decomposition' : 0}
 new_mm = 0
-
-
-sphere_mask = np.zeros([16,600,600])
-sphere_mask[0,:,:] = 1
-for xi in range(600):
-    for yi in range (600):
-        if np.sqrt((xi-265)**2 + (yi-293)**2) < 190:
-            sphere_mask[1:,xi, yi] = 1
 def callb_click(event):
     print('click at {} {}'.format(event.x, event.y))
     
@@ -72,8 +64,8 @@ def window_main():
     Creates a pysimplegui window for the program.
     '''
     
-    select = [[sg.Input('rmmdLoad', key='rmmdLoad', enable_events=True, visible=False), sg.FileBrowse('RGB950 File', target='rmmdLoad', file_types=(('RMMD', '.rmmd'),('CMMI', '.cmmi')))],
-              [sg.Input('fileGot', key='fileGot', enable_events=True, visible=False), sg.FileBrowse('Select MMbinary', target='fileGot', file_types=(('Mueller Matrix Files','.bin'),))]]
+    select = [[sg.Input('rmmdLoad', key='rmmdLoad', enable_events=True, visible=False), sg.FileBrowse('RGB950 File', target='rmmdLoad', file_types=(('RMMD', '.rmmd'),('CMMI', '.cmmi'))), sg.Combo(('451nm', '524nm', '662nm', '947nm'), default_value='947nm', k='rmmd_wv', readonly=True)],
+              [sg.Input('fileGot', key='fileGot', enable_events=True, visible=False), sg.FileBrowse('Select MMbinary', target='fileGot', file_types=(('Mueller Matrix Files','.bin'),), size=(20, 1))]]
     
     export = [[sg.Button('Export Data', k='export_button', expand_x=True)],
               [sg.Combo(('Retardance Vector', 'Cloude Decomposition', 'Cloude Dominant Process', ''), k='export_combo', readonly=True)],]
@@ -81,8 +73,10 @@ def window_main():
     loading = [[sg.Column(select), sg.Column(export)]]
     
     mm_function_buttons = [
-        [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], [sg.Button('Linear Polarizance Orientation', expand_x=True, disabled=True)],
-        [sg.Button('Calc Retardance', expand_x=True, disabled=True)], 
+        [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], 
+        [sg.Button('Polarizance AoLP', expand_x=True, disabled=True)],
+        [sg.Button('Diattenuation AoLP', expand_x=True, disabled=True)],
+        [sg.Button('Lu-Chipman Retardance', expand_x=True, disabled=True)], 
         [sg.Button('Cloude Decomposition', expand_x=True, disabled=True)],
         # [sg.Input('ClDc_save', key='ClDc_save', enable_events=True, visible=False), sg.FileSaveAs('Save Cloude Decomp', target = 'ClDc_save', file_types=(('Binary Files', '.bin'),), visible=False)], # Obsolete
         [sg.ProgressBar(360, orientation='horizontal', visible=False, k='prog', expand_x=True)], 
@@ -130,19 +124,12 @@ while True:
         
         mm = rgb.readMMbin(values['fileGot'])
         mmName = values['fileGot'].split('/')[-1].strip('.bin')
-        
-        mmNList = mmName.split('_')
-        if mmNList[1] == 'sphere':
-            
-            mm = mm * sphere_mask
-        
-        
-        
         new_mm = 1
         # print('Mueller Matrix Loaded')
         window['Mueller Matrix Plot'].update(disabled=False)
-        window['Linear Polarizance Orientation'].update(disabled=False)
-        window['Calc Retardance'].update(disabled=False)
+        window['Polarizance AoLP'].update(disabled=False)
+        window['Diattenuation AoLP'].update(disabled=False)
+        window['Lu-Chipman Retardance'].update(disabled=False)
         window['Cloude Decomposition'].update(disabled=False)
         
     
@@ -155,8 +142,9 @@ while True:
     elif event == 'Cloude Decomposition':
         if new_mm == 1: # Recalculate if there is new data
             window['Mueller Matrix Plot'].update(disabled=True)
-            window['Linear Polarizance Orientation'].update(disabled=True)
-            window['Calc Retardance'].update(disabled=True)
+            window['Polarizance AoLP'].update(disabled=True)
+            window['Diattenuation AoLP'].update(disabled=True)
+            window['Lu-Chipman Retardance'].update(disabled=True)
             window['Cloude Decomposition'].update(disabled=True)
             
             eigBasis, mmBasis = cdf.cloudeDecompbig(mm)
@@ -165,8 +153,9 @@ while True:
             new_mm = 0
                 
             window['Mueller Matrix Plot'].update(disabled=False)
-            window['Linear Polarizance Orientation'].update(disabled=False)
-            window['Calc Retardance'].update(disabled=False)
+            window['Polarizance AoLP'].update(disabled=False)
+            window['Diattenuation AoLP'].update(disabled=False)
+            window['Lu-Chipman Retardance'].update(disabled=False)
             window['Cloude Decomposition'].update(disabled=False)
             
         
@@ -186,16 +175,20 @@ while True:
         # draw_figure(winfig["-CANVAS-"].TKCanvas, eigFig)
         
     
-    elif event == 'Linear Polarizance Orientation':
-        rgb.plot_lin_pol_ori(mm)
+    elif event == 'Polarizance AoLP':
+        rgb.plot_aolp(mm)
         if data_loaded['Cloude Decomposition']:
-            rgb.plot_lin_pol_ori(mmBasis[0], axtitle='AoLP: Dominant Eigenvalue')
+            rgb.plot_aolp(mmBasis[0], axtitle='AoLP: Dominant Eigenvalue')
     
-    elif event == 'Calc Retardance':
+    elif event == 'Diattenuation AoLP':
+        rgb.plot_aolp(mm, diat_or_polarizance=1, axtitle='Diattenuation AoLP')
+    
+    elif event == 'Lu-Chipman Retardance':
         window['prog'].update(visible=True)
         window['Mueller Matrix Plot'].update(disabled=True)
-        window['Linear Polarizance Orientation'].update(disabled=True)
-        window['Calc Retardance'].update(disabled=True)
+        window['Polarizance AoLP'].update(disabled=True)
+        window['Diattenuation AoLP'].update(disabled=True)
+        window['Lu-Chipman Retardance'].update(disabled=True)
         window['Cloude Decomposition'].update(disabled=True)
         mm = mm.reshape([4,4,360_000])
         ret_vec = np.zeros([360_000, 3])
@@ -206,8 +199,9 @@ while True:
         mm = mm.reshape(16, 600, 600)
         window['prog'].update(current_count=0, visible=False)
         window['Mueller Matrix Plot'].update(disabled=False)
-        window['Linear Polarizance Orientation'].update(disabled=False)
-        window['Calc Retardance'].update(disabled=False)
+        window['Polarizance AoLP'].update(disabled=False)
+        window['Diattenuation AoLP'].update(disabled=False)
+        window['Lu-Chipman Retardance'].update(disabled=False)
         window['Cloude Decomposition'].update(disabled=False)
         window['Lin Retardance Orientation'].update(visible=True)
         window['Retardance Magnitude'].update(visible=True)
@@ -230,12 +224,21 @@ while True:
         
         if fileName[-4:] == 'rmmd':
             fileName = fileName.strip('.rmmd')
-            rmmd = rgb.readRMMD(values['rmmdLoad'])
+            
+            rmmd = rgb.readRMMD(values['rmmdLoad'], )
             
             rmmdVidName = values['rmmdLoad'].split('/')[-1]
             ani = rgb.animRMMD(rmmd, fileName)
-            
-            rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(fileName))
+            if values['rmmd_wv'] == '947nm':
+                rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(fileName), wv=wv_947)
+            elif values['rmmd_wv'] == '662nm':
+               rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(fileName), wv=wv_662)
+            elif values['rmmd_wv'] == '524nm':
+               rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(fileName), wv=wv_524) 
+            elif values['rmmd_wv'] == '451nm':
+                rgb.makeRMMDbin(values['rmmdLoad'], './data/{}.bin'.format(fileName), wv=wv_451) 
+                
+                
         elif fileName[-4:] == 'cmmi':
             fileName = fileName.strip('.cmmi')
             cmmi = rgb.makeMMbin(values['rmmdLoad'], './data/{}.bin'.format(fileName))

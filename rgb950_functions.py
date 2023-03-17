@@ -119,6 +119,14 @@ def get_polarizance(MM):
     
     return lin_mag, lin_orient
 
+def get_diattenuation(MM):
+    P = MM[[0,4,8],:,:]
+    
+    lin_mag = np.sqrt(P[1]**2 + P[2]**2)/P[0]
+    lin_orient = 0.5 * np.arctan2(P[2], P[1])
+    
+    return lin_mag, lin_orient
+
 def updateAnim(frame, rmmd, im, ax):
     im.set_array(rmmd[frame])
     ax.set_title('{}'.format(frame))
@@ -167,10 +175,12 @@ def RetardanceVector(MM):
     Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
     return Rvec
 
-
-def plot_lin_pol_ori(MM, cmap='hsv', axtitle = 'AoLP'):
+def plot_aolp(MM, cmap='hsv', diat_or_polarizance = 0, axtitle='AoLP'):
     MM = MM.reshape(16, 600, 600)
-    mag, lin = get_polarizance(MM)
+    if diat_or_polarizance == 1:
+        mag, lin = get_diattenuation(MM)
+    else:
+        mag, lin = get_polarizance(MM)
     fig = plt.figure()
     ax = plt.subplot()
     ax.set_title(axtitle)
@@ -178,8 +188,8 @@ def plot_lin_pol_ori(MM, cmap='hsv', axtitle = 'AoLP'):
     ax.set_yticks([])
     im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
     cb = fig.colorbar(im, )
-    cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
-    
+    cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-90\degree$', r'$-45\degree$', '0', r'$45\degree$', r'$90\degree$'], fontsize=12)
+   
 
 def plot_retardance_linear(ret_vec):
     
