@@ -15,7 +15,7 @@ import cloude_decomp_functions as cdf
 import scipy.linalg as slin
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import PySimpleGUI as sg
-
+import os
 
 #Blue to Red Color scale for S1 and S2
 colmap = np.zeros((255,3));
@@ -103,7 +103,11 @@ def window_fig():
     return sg.Window('Graph', lay, finalize=True, element_justification='center')
 
 win = window_main()
-
+if not os.path.exists('./data/'):
+    os.makedirs('./data/')
+    
+if not os.path.exists('./rmmd_videos'):
+    os.makedirs('./rmmd_videos')
 
 while True:
     
