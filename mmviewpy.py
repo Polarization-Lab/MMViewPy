@@ -166,12 +166,16 @@ while True:
         eigFig, axs = plt.subplots(2, 2)
         axs = axs.reshape((4))
         for i in range(4):
-            axs[i].imshow(eigBasis[i,:,:])
+            im = axs[i].imshow(eigBasis[i,:,:], vmin=0, vmax=1)
             axs[i].set_xticks([])
             axs[i].set_yticks([])
+            
             axs[i].set_title('Eigenvalue: {}'.format(i+1))
         
-        eigFig.tight_layout()
+        eigFig.subplots_adjust(right=0.8)
+        cbar_ax = eigFig.add_axes([0.85, 0.15, 0.05, 0.7])
+        eigFig.colorbar(im, cax=cbar_ax)
+        # eigFig.tight_layout()
         eigFig.canvas.mpl_connect('button_press_event', callb_ax)
         
         # For future inline plot implementaton
