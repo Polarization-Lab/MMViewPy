@@ -72,10 +72,12 @@ def window_main():
         
     loading = [[sg.Column(select), sg.Column(export)]]
     
+    polar_diatt_frame = [[sg.Radio('Polarizance', k='Polarizance', group_id='polar_diatt', expand_x=True, default=True), sg.Radio('Diattenuation', k='Diattenuation', expand_x=True, group_id='polar_diatt')],
+                         [sg.Button('AoLP', expand_x=True, disabled=True), sg.Button('Magnitude', expand_x=True, disabled=True)]]
+    
     mm_function_buttons = [
         [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], 
-        [sg.Button('Polarizance AoLP', expand_x=True, disabled=True)],
-        [sg.Button('Diattenuation AoLP', expand_x=True, disabled=True)],
+        [sg.Frame('MM Vectors', polar_diatt_frame, expand_x=True)],
         [sg.Button('Lu-Chipman Retardance', expand_x=True, disabled=True)], 
         [sg.Button('Cloude Decomposition', expand_x=True, disabled=True)],
         # [sg.Input('ClDc_save', key='ClDc_save', enable_events=True, visible=False), sg.FileSaveAs('Save Cloude Decomp', target = 'ClDc_save', file_types=(('Binary Files', '.bin'),), visible=False)], # Obsolete
@@ -84,7 +86,7 @@ def window_main():
     
     # total layout for window
     lay = [[sg.Frame('Data Handling', loading, expand_x=True)],
-           [sg.Frame('MM Plotting', mm_function_buttons, expand_x=True)],
+           [sg.Frame('Processing', mm_function_buttons, expand_x=True)],
            [],]
               
     return sg.Window('RGB950 Post Processing', layout=lay, resizable=True, finalize=True, keep_on_top=True)
@@ -131,8 +133,8 @@ while True:
         new_mm = 1
         # print('Mueller Matrix Loaded')
         window['Mueller Matrix Plot'].update(disabled=False)
-        window['Polarizance AoLP'].update(disabled=False)
-        window['Diattenuation AoLP'].update(disabled=False)
+        window['Magnitude'].update(disabled=False)
+        window['AoLP'].update(disabled=False)
         window['Lu-Chipman Retardance'].update(disabled=False)
         window['Cloude Decomposition'].update(disabled=False)
         
@@ -146,8 +148,8 @@ while True:
     elif event == 'Cloude Decomposition':
         if new_mm == 1: # Recalculate if there is new data
             window['Mueller Matrix Plot'].update(disabled=True)
-            window['Polarizance AoLP'].update(disabled=True)
-            window['Diattenuation AoLP'].update(disabled=True)
+            window['Magnitude'].update(disabled=True)
+            window['AoLP'].update(disabled=True)
             window['Lu-Chipman Retardance'].update(disabled=True)
             window['Cloude Decomposition'].update(disabled=True)
             
@@ -157,8 +159,8 @@ while True:
             new_mm = 0
                 
             window['Mueller Matrix Plot'].update(disabled=False)
-            window['Polarizance AoLP'].update(disabled=False)
-            window['Diattenuation AoLP'].update(disabled=False)
+            window['Magnitude'].update(disabled=False)
+            window['AoLP'].update(disabled=False)
             window['Lu-Chipman Retardance'].update(disabled=False)
             window['Cloude Decomposition'].update(disabled=False)
             
@@ -183,19 +185,18 @@ while True:
         # draw_figure(winfig["-CANVAS-"].TKCanvas, eigFig)
         
     
-    elif event == 'Polarizance AoLP':
-        rgb.plot_aolp(mm)
-        if data_loaded['Cloude Decomposition']:
-            rgb.plot_aolp(mmBasis[0], axtitle='AoLP: Dominant Eigenvalue')
+    elif event == 'Magnitude':
+        rgb.plot_mag(mm, diatt=values['Diattenuation'])
+        
     
-    elif event == 'Diattenuation AoLP':
-        rgb.plot_aolp(mm, diatt=1, axtitle='Diattenuation AoLP')
+    elif event == 'AoLP':
+        rgb.plot_aolp(mm, diatt=values['Diattenuation'])
     
     elif event == 'Lu-Chipman Retardance':
         window['prog'].update(visible=True)
         window['Mueller Matrix Plot'].update(disabled=True)
-        window['Polarizance AoLP'].update(disabled=True)
-        window['Diattenuation AoLP'].update(disabled=True)
+        window['Magnitude'].update(disabled=True)
+        window['AoLP'].update(disabled=True)
         window['Lu-Chipman Retardance'].update(disabled=True)
         window['Cloude Decomposition'].update(disabled=True)
         mm = mm.reshape([4,4,360_000])
@@ -207,8 +208,8 @@ while True:
         mm = mm.reshape(16, 600, 600)
         window['prog'].update(current_count=0, visible=False)
         window['Mueller Matrix Plot'].update(disabled=False)
-        window['Polarizance AoLP'].update(disabled=False)
-        window['Diattenuation AoLP'].update(disabled=False)
+        window['Magnitude'].update(disabled=False)
+        window['AoLP'].update(disabled=False)
         window['Lu-Chipman Retardance'].update(disabled=False)
         window['Cloude Decomposition'].update(disabled=False)
         window['Lin Retardance Orientation'].update(visible=True)
