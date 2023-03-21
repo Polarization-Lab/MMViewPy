@@ -175,9 +175,9 @@ def RetardanceVector(MM):
     Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
     return Rvec
 
-def plot_aolp(MM, cmap='hsv', diat_or_polarizance = 0, axtitle='AoLP'):
+def plot_aolp(MM, cmap='hsv', diatt = 0, axtitle='AoLP'):
     MM = MM.reshape(16, 600, 600)
-    if diat_or_polarizance == 1:
+    if diatt == 1:
         mag, lin = get_diattenuation(MM)
     else:
         mag, lin = get_polarizance(MM)
@@ -190,6 +190,21 @@ def plot_aolp(MM, cmap='hsv', diat_or_polarizance = 0, axtitle='AoLP'):
     cb = fig.colorbar(im, )
     cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-90\degree$', r'$-45\degree$', '0', r'$45\degree$', r'$90\degree$'], fontsize=12)
    
+def plot_mag(MM, cmap='viridis', diatt=0, axtitle='Magnitude'):
+    MM = MM.reshape(16, 600, 600)
+    if diatt == 1:
+        mag, lin = get_diattenuation(MM)
+    else:
+        mag, lin = get_polarizance(MM)
+    fig = plt.figure()
+    ax = plt.subplot()
+    ax.set_title(axtitle)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    im = ax.imshow(mag, cmap=cmap, vmin=0, vmax=1, interpolation='none')
+    cb = fig.colorbar(im, )
+    cb.ax.set_yticks([0, 0.25, 0.50, 0.75, 1.0], ['0', '0.25', '0.50', '0.75', '1.00'], fontsize=12)
+
 
 def plot_retardance_linear(ret_vec):
     

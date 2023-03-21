@@ -189,7 +189,7 @@ while True:
             rgb.plot_aolp(mmBasis[0], axtitle='AoLP: Dominant Eigenvalue')
     
     elif event == 'Diattenuation AoLP':
-        rgb.plot_aolp(mm, diat_or_polarizance=1, axtitle='Diattenuation AoLP')
+        rgb.plot_aolp(mm, diatt=1, axtitle='Diattenuation AoLP')
     
     elif event == 'Lu-Chipman Retardance':
         window['prog'].update(visible=True)
