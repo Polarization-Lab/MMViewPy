@@ -1,5 +1,5 @@
-# rgbirpy
-python module for processing rmmd files from the RGB950
+# MMViewPy
+python module for processing rmmd & cmmi files from the RGB950 polarimeter
 
 
 Installation Instructions
