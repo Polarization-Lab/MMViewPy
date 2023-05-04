@@ -92,11 +92,14 @@ def readMMbin(inputfilename):
     M = np.reshape(raw,[16,600,600])
     return M
 
-def MMImagePlot(MM,minval,maxval, title=''):
+def MMImagePlot(MM,minval=-1,maxval=1, title='', is_cbox = 0, colmap=colmap):
     f, axarr = plt.subplots(nrows = 4,ncols = 4,figsize=(6, 5))
     f.suptitle(title, fontsize=20)
     
     MM = MM.reshape([4,4,600,600])
+    
+    if is_cbox == 1:
+        MM = np.transpose(np.flipud(np.transpose(MM, (3, 2, 0, 1))), (2, 3, 0, 1))
     #normalization
     MM = MM/MM[0,0,:,:]
     for i in range(4):
@@ -112,7 +115,7 @@ def MMImagePlot(MM,minval,maxval, title=''):
 
 def get_polarizance(MM):
     '''returns polarizance magnitude and orientation of input mueller matrix'''
-    P = MM[:4,:,:]
+    P = MM[[0,4,8],:,:]
     
     lin_mag = np.sqrt(P[1]**2 + P[2]**2)/P[0]
     lin_orient = 0.5 * np.arctan2(P[2], P[1])
@@ -120,7 +123,7 @@ def get_polarizance(MM):
     return lin_mag, lin_orient
 
 def get_diattenuation(MM):
-    P = MM[[0,4,8],:,:]
+    P = MM[:4,:,:]
     
     lin_mag = np.sqrt(P[1]**2 + P[2]**2)/P[0]
     lin_orient = 0.5 * np.arctan2(P[2], P[1])
@@ -175,20 +178,36 @@ def RetardanceVector(MM):
     Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
     return Rvec
 
-def plot_aolp(MM, cmap='hsv', diatt = 0, axtitle='AoLP'):
-    MM = MM.reshape(16, 600, 600)
+def plot_aolp(MM, cmap='hsv', diatt = 0):
+    MM = MM.reshape(4,4, 600, 600)
     if diatt == 1:
-        mag, lin = get_diattenuation(MM)
+        S0 = MM[0,0,:,:]
+        S1 = MM[0,1,:,:]
+        S2 = MM[0,2,:,:]
+    
     else:
-        mag, lin = get_polarizance(MM)
+    
+        S0 = MM[0,0,:,:]
+        S1 = MM[1,0,:,:]
+        S2 = MM[2,0,:,:]
+    AoLP = 0.5 * np.arctan2(S2, S1)
+    
     fig = plt.figure()
     ax = plt.subplot()
-    ax.set_title(axtitle)
+    if diatt == 1:
+        ax.set_title('Diattenuation AoLP')
+    else:
+        ax.set_title('Polarizance AoLP')
     ax.set_xticks([])
     ax.set_yticks([])
-    im = ax.imshow(lin, cmap=cmap, vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
+    
+    AoLP_unwrap = np.unwrap(AoLP,discont=np.pi/2)
+    AoLP = np.rad2deg(AoLP_unwrap)
+    # AoLP = np.mod(AoLP, 180)
+    im = ax.imshow(AoLP, cmap=cmap, vmin = -90, vmax = 90, interpolation='none')
     cb = fig.colorbar(im, )
-    cb.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-90\degree$', r'$-45\degree$', '0', r'$45\degree$', r'$90\degree$'], fontsize=12)
+    # cb.ax.set_yticks([0, 45, 90, 135, 180], [r'$0\degree$', r'$45\degree$', '$90\degree$', r'$135\degree$', r'$180\degree$'], fontsize=12)
+    cb.ax.set_yticks([-90, -45, 0, 45, 90], [r'$-90\degree$', r'$-45\degree$', '$0\degree$', r'$45\degree$', r'$90\degree$'], fontsize=12)
    
 def plot_mag(MM, cmap='viridis', diatt=0, axtitle='Magnitude'):
     MM = MM.reshape(16, 600, 600)
