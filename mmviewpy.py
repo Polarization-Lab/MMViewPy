@@ -73,10 +73,10 @@ def window_main():
     loading = [[sg.Column(select), sg.Column(export)]]
     
     polar_diatt_frame = [[sg.Radio('Polarizance', k='Polarizance', group_id='polar_diatt', expand_x=True, default=True), sg.Radio('Diattenuation', k='Diattenuation', expand_x=True, group_id='polar_diatt')],
-                         [sg.Button('AoLP', expand_x=True, disabled=True), sg.Button('Magnitude', expand_x=True, disabled=True)]]
+                         [sg.Button('DoLP / AoLP', expand_x=True, disabled=True), sg.Button('Magnitude', expand_x=True, disabled=True)]]
     
     mm_function_buttons = [
-        [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True)], 
+        [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True), sg.Text('Threshold:'), sg.Input('', size=(8,1), k='MM_thresh')], 
         [sg.Frame('MM Vectors', polar_diatt_frame, expand_x=True)],
         [sg.Button('Lu-Chipman Retardance', expand_x=True, disabled=True)], 
         [sg.Button('Cloude Decomposition', expand_x=True, disabled=True)],
@@ -105,43 +105,53 @@ def window_fig():
     return sg.Window('Graph', lay, finalize=True, element_justification='center')
 
 win = window_main()
+
+# Creating data and video directory on computer
 if not os.path.exists('./data/'):
     os.makedirs('./data/')
     
 if not os.path.exists('./rmmd_videos'):
     os.makedirs('./rmmd_videos')
 
+
+# Event handling loop
 while True:
     
-    # read events from all open windows, which happens to just be variable 'win' for now
+    # read events from all open windows
     window, event, values = sg.read_all_windows(timeout_key = '__TIMEOUT__')
     
     # begin with exit protocol before other events
     if event == sg.WIN_CLOSED or event == 'Exit':
-        if window == win:
-            
+        if window == win: 
             window.close()
-            break
-        
+            break # ends program
         else:
             window.close()
     
-    elif event == 'fileGot':
+    elif event == 'fileGot': # MMbinary file loading
         
         mm = rgb.readMMbin(values['fileGot'])
         mmName = values['fileGot'].split('/')[-1].strip('.bin')
+        is_cbox = 0
+        if mmName[:4] == 'cbox':
+            is_cbox = 1
+            
         new_mm = 1
         # print('Mueller Matrix Loaded')
         window['Mueller Matrix Plot'].update(disabled=False)
         window['Magnitude'].update(disabled=False)
-        window['AoLP'].update(disabled=False)
+        window['DoLP / AoLP'].update(disabled=False)
         window['Lu-Chipman Retardance'].update(disabled=False)
         window['Cloude Decomposition'].update(disabled=False)
         
     
         
-    elif event == 'Mueller Matrix Plot':
-        rgb.MMImagePlot(mm, -1, 1)
+    elif event == 'Mueller Matrix Plot': # Plotting Mueller matrix with thresholding
+        if values['MM_thresh'] != '':
+            thresh = float(values['MM_thresh'])
+            rgb.MMImagePlot(mm, -thresh, thresh, is_cbox=is_cbox)
+        else:
+            rgb.MMImagePlot(mm, -1, 1, is_cbox=is_cbox)
     
     
     
@@ -149,7 +159,7 @@ while True:
         if new_mm == 1: # Recalculate if there is new data
             window['Mueller Matrix Plot'].update(disabled=True)
             window['Magnitude'].update(disabled=True)
-            window['AoLP'].update(disabled=True)
+            window['DoLP / AoLP'].update(disabled=True)
             window['Lu-Chipman Retardance'].update(disabled=True)
             window['Cloude Decomposition'].update(disabled=True)
             
@@ -160,19 +170,19 @@ while True:
                 
             window['Mueller Matrix Plot'].update(disabled=False)
             window['Magnitude'].update(disabled=False)
-            window['AoLP'].update(disabled=False)
+            window['DoLP / AoLP'].update(disabled=False)
             window['Lu-Chipman Retardance'].update(disabled=False)
             window['Cloude Decomposition'].update(disabled=False)
             
-        
+        # Eigenvalues figure
         eigFig, axs = plt.subplots(2, 2)
         axs = axs.reshape((4))
         for i in range(4):
-            im = axs[i].imshow(eigBasis[i,:,:], vmin=0, vmax=1)
+            im = axs[i].imshow(eigBasis[i,:,:], interpolation='none', norm = mpl.colors.LogNorm(vmin = 0.001, vmax = 1.0))
             axs[i].set_xticks([])
             axs[i].set_yticks([])
             
-            axs[i].set_title('Eigenvalue: {}'.format(i+1))
+            axs[i].set_title('Eigenvalue: {}'.format(i))
         
         eigFig.subplots_adjust(right=0.8)
         cbar_ax = eigFig.add_axes([0.85, 0.15, 0.05, 0.7])
@@ -189,16 +199,18 @@ while True:
         rgb.plot_mag(mm, diatt=values['Diattenuation'])
         
     
-    elif event == 'AoLP':
+    elif event == 'DoLP / AoLP':
         rgb.plot_aolp(mm, diatt=values['Diattenuation'])
     
     elif event == 'Lu-Chipman Retardance':
+        
         window['prog'].update(visible=True)
         window['Mueller Matrix Plot'].update(disabled=True)
         window['Magnitude'].update(disabled=True)
-        window['AoLP'].update(disabled=True)
+        window['DoLP / AoLP'].update(disabled=True)
         window['Lu-Chipman Retardance'].update(disabled=True)
         window['Cloude Decomposition'].update(disabled=True)
+        
         mm = mm.reshape([4,4,360_000])
         ret_vec = np.zeros([360_000, 3])
         for ii in np.arange(0, 360_000):
@@ -206,14 +218,16 @@ while True:
             if ii % 1000 == 0:
                 window['prog'].update(current_count=ii//1000)
         mm = mm.reshape(16, 600, 600)
+        
         window['prog'].update(current_count=0, visible=False)
         window['Mueller Matrix Plot'].update(disabled=False)
         window['Magnitude'].update(disabled=False)
-        window['AoLP'].update(disabled=False)
+        window['DoLP / AoLP'].update(disabled=False)
         window['Lu-Chipman Retardance'].update(disabled=False)
         window['Cloude Decomposition'].update(disabled=False)
         window['Lin Retardance Orientation'].update(visible=True)
         window['Retardance Magnitude'].update(visible=True)
+        
         data_loaded['Retardance Vector'] = 1
         
     elif event == 'Lin Retardance Orientation':
@@ -222,10 +236,8 @@ while True:
     elif event == 'Retardance Magnitude':
         rgb.plot_retardance_mag(ret_vec)
         
-    elif event == 'Raw Files':
-        rmmd_win = window_rmmd()
     
-    elif event == 'rmmdLoad':
+    elif event == 'rmmdLoad': # Loading RGB950 files
         
         filePath = values['rmmdLoad'].split('/')
         fileName = filePath[-1]

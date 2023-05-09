@@ -6,6 +6,7 @@ Created on Wed Sep 14 11:46:23 2022
 """
 
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.colors import ListedColormap
@@ -101,10 +102,11 @@ def MMImagePlot(MM,minval=-1,maxval=1, title='', is_cbox = 0, colmap=colmap):
     if is_cbox == 1:
         MM = np.transpose(np.flipud(np.transpose(MM, (3, 2, 0, 1))), (2, 3, 0, 1))
     #normalization
-    MM = MM/MM[0,0,:,:]
+    # MM = MM/MM[0,0,:,:]
     for i in range(4):
         for j in range(4):
-            im=axarr[i,j].imshow(MM[i,j,:,:],cmap=colmap,vmin = minval,vmax=maxval)
+            # im=axarr[i,j].imshow(MM[i,j,:,:],cmap=colmap,vmin = minval,vmax=maxval)
+            im=axarr[i,j].imshow(MM[i,j,:,:],cmap=colmap,vmin = 0,vmax=0.2)
             axarr[i,j].set_xticks([])
             axarr[i,j].set_yticks([])
             # im=axarr[i,j].imshow(MM[i,j,:,:], cmap=colmap)
@@ -182,32 +184,43 @@ def plot_aolp(MM, cmap='hsv', diatt = 0):
     MM = MM.reshape(4,4, 600, 600)
     if diatt == 1:
         S0 = MM[0,0,:,:]
-        S1 = MM[0,1,:,:]
-        S2 = MM[0,2,:,:]
+        S1 = MM[0,1,:,:] / S0
+        S2 = MM[0,2,:,:] / S0
     
     else:
     
         S0 = MM[0,0,:,:]
-        S1 = MM[1,0,:,:]
-        S2 = MM[2,0,:,:]
+        S1 = MM[1,0,:,:] / S0
+        S2 = MM[2,0,:,:] / S0
     AoLP = 0.5 * np.arctan2(S2, S1)
     
-    fig = plt.figure()
-    ax = plt.subplot()
+    fig, axs = plt.subplots(ncols = 2, figsize=(6,2))
+    
     if diatt == 1:
-        ax.set_title('Diattenuation AoLP')
+        fig.suptitle('Diattenuation Vector')
     else:
-        ax.set_title('Polarizance AoLP')
-    ax.set_xticks([])
-    ax.set_yticks([])
+        fig.suptitle('Polarizance Vector')
+    axs[0].set_xticks([])
+    axs[0].set_yticks([])
+    axs[1].set_xticks([])
+    axs[1].set_yticks([])
+    
+    DoLP = np.sqrt(S1**2 + S2**2)
+    DoLP[np.isnan(DoLP)] = 0
     
     AoLP_unwrap = np.unwrap(AoLP,discont=np.pi/2)
     AoLP = np.rad2deg(AoLP_unwrap)
-    # AoLP = np.mod(AoLP, 180)
-    im = ax.imshow(AoLP, cmap=cmap, vmin = -90, vmax = 90, interpolation='none')
-    cb = fig.colorbar(im, )
-    # cb.ax.set_yticks([0, 45, 90, 135, 180], [r'$0\degree$', r'$45\degree$', '$90\degree$', r'$135\degree$', r'$180\degree$'], fontsize=12)
-    cb.ax.set_yticks([-90, -45, 0, 45, 90], [r'$-90\degree$', r'$-45\degree$', '$0\degree$', r'$45\degree$', r'$90\degree$'], fontsize=12)
+    AoLP = np.mod(AoLP, 180)
+    
+    im1 = axs[0].imshow(DoLP, cmap='gray', interpolation = 'none', norm = matplotlib.colors.LogNorm(vmin = 0.001, vmax = 1.00, clip=True))
+    im2 = axs[1].imshow(AoLP, cmap=cmap, vmin = 0, vmax = 180, interpolation='none')
+    axs[0].set_title('DoLP')
+    axs[1].set_title('AoLP')
+    cb1 = fig.colorbar(im1)
+    cb1.ax.set_yticks([0.01, 0.1, 1.0], ['1 %', '10 %', '100 %'], fontsize=12)
+    cb2 = fig.colorbar(im2)
+    cb2.ax.set_yticks([0, 45, 90, 135, 180], [r'$0\degree$', r'$45\degree$', '$90\degree$', r'$135\degree$', r'$180\degree$'], fontsize=12)
+    # cb.ax.set_yticks([-90, -45, 0, 45, 90], [r'$-90\degree$', r'$-45\degree$', '$0\degree$', r'$45\degree$', r'$90\degree$'], fontsize=12)
    
 def plot_mag(MM, cmap='viridis', diatt=0, axtitle='Magnitude'):
     MM = MM.reshape(16, 600, 600)
