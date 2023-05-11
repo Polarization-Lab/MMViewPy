@@ -147,10 +147,10 @@ while True:
     
         
     elif event == 'Mueller Matrix Plot': # Plotting Mueller matrix with thresholding
-        if values['MM_thresh'] != '':
+        try:
             thresh = float(values['MM_thresh'])
             rgb.MMImagePlot(mm, -thresh, thresh, is_cbox=is_cbox)
-        else:
+        except:
             rgb.MMImagePlot(mm, -1, 1, is_cbox=is_cbox)
     
     
