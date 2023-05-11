@@ -102,11 +102,11 @@ def MMImagePlot(MM,minval=-1,maxval=1, title='', is_cbox = 0, colmap=colmap):
     if is_cbox == 1:
         MM = np.transpose(np.flipud(np.transpose(MM, (3, 2, 0, 1))), (2, 3, 0, 1))
     #normalization
-    # MM = MM/MM[0,0,:,:]
+    MM = MM/MM[0,0,:,:]
+    
     for i in range(4):
         for j in range(4):
-            # im=axarr[i,j].imshow(MM[i,j,:,:],cmap=colmap,vmin = minval,vmax=maxval)
-            im=axarr[i,j].imshow(MM[i,j,:,:],cmap=colmap,vmin = 0,vmax=0.2)
+            im=axarr[i,j].imshow(MM[i,j,:,:],cmap=colmap,vmin = minval,vmax=maxval)
             axarr[i,j].set_xticks([])
             axarr[i,j].set_yticks([])
             # im=axarr[i,j].imshow(MM[i,j,:,:], cmap=colmap)
@@ -233,9 +233,9 @@ def plot_mag(MM, cmap='viridis', diatt=0, axtitle='Magnitude'):
     ax.set_title(axtitle)
     ax.set_xticks([])
     ax.set_yticks([])
-    im = ax.imshow(mag, cmap=cmap, vmin=0, vmax=1, interpolation='none')
+    im = ax.imshow(mag, cmap=cmap, norm = matplotlib.colors.LogNorm(vmin = 0.001, vmax = 1.00, clip=True), interpolation='none')
     cb = fig.colorbar(im, )
-    cb.ax.set_yticks([0, 0.25, 0.50, 0.75, 1.0], ['0', '0.25', '0.50', '0.75', '1.00'], fontsize=12)
+    cb.ax.set_yticks([0.01, 0.1, 1.0], ['1 %', '10 %', '100 %'], fontsize=12)
 
 
 def plot_retardance_linear(ret_vec):
