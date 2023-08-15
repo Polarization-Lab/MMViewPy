@@ -34,6 +34,7 @@ colmap = ListedColormap(colmap)
 
 # wavelength params = [theta_A, delta_A, theta_LP, theta_G, delta_G]
 wv_947 = [102.894, 68.2212, -1.17552, -104.486, 122.168]
+# wv_947 = [-4.15989, 132.725, -0.329298, -13.3397, 117.562]
 wv_451 = [13.41, 143.13, -0.53, -17.02, 130.01]
 wv_524 = [13.41, 120.00, -0.53, -17.02, 124.55]
 wv_662 = [13.41, 94.780, -0.53, -17.02, 127.12]
@@ -166,18 +167,29 @@ def RetardanceVector(MM):
     M = MM/m00
     D = M[0,1:]
     Dmag = np.linalg.norm(D)
-    mD = np.sqrt(1-Dmag**2)*np.identity(3) + (1-np.sqrt(1-Dmag**2))*np.outer(D/Dmag,D/Dmag)
-    MD=np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
+    x = 1-Dmag**2
+    x = np.where(x<0, 0, x)
+    mD = np.sqrt(x)*np.identity(3) + (1-np.sqrt(x))*np.outer(D/Dmag,D/Dmag)
+    MD = np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
     Mprime = M@np.linalg.inv(MD)
-    [mR, mDelta] = slin.polar(Mprime[1:,1:])
-    MR = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((np.zeros(3)[:,np.newaxis],mR),axis=1)))
+    PDelta = Mprime[1:,0]
+    [l1,l2,l3] = np.linalg.eigvals(Mprime[1:,1:]@Mprime[1:,1:].T)
+    if np.linalg.det(Mprime[1:,1:]) > 0:
+        mDelta = np.real((np.linalg.inv(Mprime[1:,1:]@Mprime[1:,1:].T + (np.sqrt(l1*l2) + np.sqrt(l2*l3) + np.sqrt(l3*l1))*np.eye(3))@((np.sqrt(l1)+np.sqrt(l2)+np.sqrt(l3))*Mprime[1:,1:]@Mprime[1:,1:].T + np.sqrt(l1*l2*l3)*np.eye(3))))
+    else:
+        mDelta = -np.real((np.linalg.inv(Mprime[1:,1:]@Mprime[1:,1:].T + (np.sqrt(l1*l2) + np.sqrt(l2*l3) + np.sqrt(l3*l1))*np.eye(3))@((np.sqrt(l1)+np.sqrt(l2)+np.sqrt(l3))*Mprime[1:,1:]@Mprime[1:,1:].T + np.sqrt(l1*l2*l3)*np.eye(3))))
+       
+    MDelta = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((PDelta[:,np.newaxis],mDelta),axis=1)))
+    MR = np.linalg.inv(MDelta)@Mprime;
+    MR = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((np.zeros(3)[:,np.newaxis],MR[1:,1:]),axis=1)))
+    mR = MR[1:,1:];
     Tr = np.trace(MR)/2 -1
     if Tr < -1:
         Tr = -1
     elif Tr > 1:
         Tr = 1
     R = np.arccos(Tr)
-    Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR),np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR),np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
+    Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR), np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR), np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
     return Rvec
 
 def plot_aolp(MM, cmap='hsv', diatt = 0):
@@ -241,15 +253,30 @@ def plot_mag(MM, cmap='viridis', diatt=0, axtitle='Magnitude'):
 def plot_retardance_linear(ret_vec):
     
     ret_vec = ret_vec.reshape([600, 600, 3])
+    lin_ret = np.zeros([600,600])
+    major_axis = np.zeros([600,600])
     
-    fig = plt.figure()
-    ax = plt.subplot()
-    ax.set_title('Linear Retardance')
-    ax.set_xticks([])
-    ax.set_yticks([])
-    im = ax.imshow(ret_vec[:,:,0], cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
-    cb = fig.colorbar(im,)
-    cb.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
+    for i in range(600):
+        for j in range(600):
+            delta_H = ret_vec[i,j,0]
+            delta_45 = ret_vec[i,j,1]
+            lin_ret[i,j] = np.sqrt(delta_H**2+delta_45**2)
+            major_axis[i,j] = 0.5*np.arctan2(delta_45, delta_H)
+    
+    fig, ax = plt.subplots(ncols = 2, figsize=(6,3))
+    fig.suptitle('Linear Retardance')
+    im1 = ax[0].imshow(lin_ret, cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
+    im2 = ax[1].imshow(major_axis, cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
+    ax[0].set_title('Magnitude')
+    ax[0].set_xticks([])
+    ax[0].set_yticks([])
+    ax[1].set_title('Major Axis')
+    ax[1].set_xticks([])
+    ax[1].set_yticks([])
+    cb1 = fig.colorbar(im1,shrink=0.8)
+    cb1.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
+    cb2 = fig.colorbar(im2,shrink=0.8)
+    cb2.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
     
 
 def plot_retardance_mag(ret_vec):

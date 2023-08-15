@@ -36,6 +36,7 @@ colmap = ListedColormap(colmap)
 wavelength params = [theta_A, delta_A, theta_LP, theta_G, delta_G]
 '''
 wv_947 = [102.894, 68.2212, -1.17552, -104.486, 122.168]
+# wv_947 = [-4.15989, 132.725, -0.329298, -13.3397, 117.562]
 wv_451 = [13.41, 143.13, -0.53, -17.02, 130.01]
 wv_524 = [13.41, 120.00, -0.53, -17.02, 124.55]
 wv_662 = [13.41, 94.780, -0.53, -17.02, 127.12]
@@ -82,7 +83,7 @@ def window_main():
         [sg.Button('Cloude Decomposition', expand_x=True, disabled=True)],
         # [sg.Input('ClDc_save', key='ClDc_save', enable_events=True, visible=False), sg.FileSaveAs('Save Cloude Decomp', target = 'ClDc_save', file_types=(('Binary Files', '.bin'),), visible=False)], # Obsolete
         [sg.ProgressBar(360, orientation='horizontal', visible=False, k='prog', expand_x=True)], 
-        [sg.Button('Lin Retardance Orientation', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
+        [sg.Button('Linear Retardance', expand_x=True, visible=False), sg.Button('Retardance Magnitude', expand_x=True, visible=False)],]
     
     # total layout for window
     lay = [[sg.Frame('Data Handling', loading, expand_x=True)],
@@ -225,12 +226,12 @@ while True:
         window['DoLP / AoLP'].update(disabled=False)
         window['Lu-Chipman Retardance'].update(disabled=False)
         window['Cloude Decomposition'].update(disabled=False)
-        window['Lin Retardance Orientation'].update(visible=True)
+        window['Linear Retardance'].update(visible=True)
         window['Retardance Magnitude'].update(visible=True)
         
         data_loaded['Retardance Vector'] = 1
         
-    elif event == 'Lin Retardance Orientation':
+    elif event == 'Linear Retardance':
         rgb.plot_retardance_linear(ret_vec)
         
     elif event == 'Retardance Magnitude':
