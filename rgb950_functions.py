@@ -265,7 +265,7 @@ def plot_retardance_linear(ret_vec):
     
     fig, ax = plt.subplots(ncols = 2, figsize=(6,3))
     fig.suptitle('Linear Retardance')
-    im1 = ax[0].imshow(lin_ret, cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
+    im1 = ax[0].imshow(lin_ret, cmap='hsv', vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
     im2 = ax[1].imshow(major_axis, cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
     ax[0].set_title('Magnitude')
     ax[0].set_xticks([])
