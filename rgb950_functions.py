@@ -265,7 +265,7 @@ def plot_retardance_linear(ret_vec):
     
     fig, ax = plt.subplots(ncols = 2, figsize=(6,3))
     fig.suptitle('Linear Retardance')
-    im1 = ax[0].imshow(lin_ret, cmap='hsv', vmin = -np.pi, vmax = np.pi, interpolation='none')
+    im1 = ax[0].imshow(lin_ret, cmap='hsv', vmin = 0, vmax = np.pi, interpolation='none')
     im2 = ax[1].imshow(major_axis, cmap='hsv', vmin = -np.pi/2, vmax = np.pi/2, interpolation='none')
     ax[0].set_title('Magnitude')
     ax[0].set_xticks([])
@@ -274,9 +274,9 @@ def plot_retardance_linear(ret_vec):
     ax[1].set_xticks([])
     ax[1].set_yticks([])
     cb1 = fig.colorbar(im1,shrink=0.8)
-    cb1.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
+    cb1.ax.set_yticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi], ['0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$', r'$\frac{3 \pi}{4}$', r'$\pi$'], fontsize=12)
     cb2 = fig.colorbar(im2,shrink=0.8)
-    cb2.ax.set_yticks([-np.pi, -np.pi/2, 0, np.pi/2, np.pi], [r'$-\pi$', r'$-\frac{\pi}{2}$', '0', r'$\frac{\pi}{2}$', r'$\pi$'], fontsize=12)
+    cb2.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
     
 
 def plot_retardance_mag(ret_vec):
