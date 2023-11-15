@@ -12,7 +12,6 @@ import matplotlib.animation as anim
 from matplotlib.colors import ListedColormap
 import rgb950_functions as rgb
 import cloude_decomp_functions as cdf
-import scipy.linalg as slin
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import PySimpleGUI as sg
 import os
@@ -76,8 +75,14 @@ def window_main():
     polar_diatt_frame = [[sg.Radio('Polarizance', k='Polarizance', group_id='polar_diatt', expand_x=True, default=True), sg.Radio('Diattenuation', k='Diattenuation', expand_x=True, group_id='polar_diatt')],
                          [sg.Button('DoLP / AoLP', expand_x=True, disabled=True), sg.Button('Magnitude', expand_x=True, disabled=True)]]
     
+    polariscope_frame = [[sg.Radio('Coordinates', k='Coordinates', group_id='polariscope', expand_x=True, default=True), sg.Radio('Stokes', k='Stokes', group_id='polariscope', expand_x=True)],
+                         [sg.Text('Min:'), sg.Input('', expand_x = True, size=(14,1), k='Min'), sg.Text('Max:'), sg.Input('', expand_x = True, size=(14,1), k='Max')],
+                         [sg.Text('PSG:'), sg.Input('', expand_x = True, size=(14,1), k='PSG'), sg.Text('PSA:'), sg.Input('', expand_x = True, size=(14,1), k='PSA')],
+                         [sg.Button('Polariscope View', expand_x=True, disabled=True), sg.Button('PSG Only', expand_x=True, disabled=True)]]
+    
     mm_function_buttons = [
-        [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True), sg.Text('Threshold:'), sg.Input('', size=(8,1), k='MM_thresh')], 
+        [sg.Button('Mueller Matrix Plot', expand_x=True, disabled=True), sg.Text('Threshold:'), sg.Input('', size=(8,1), k='MM_thresh')],
+        [sg.Frame('Polariscope', polariscope_frame, expand_x=True)],
         [sg.Frame('MM Vectors', polar_diatt_frame, expand_x=True)],
         [sg.Button('Lu-Chipman Retardance', expand_x=True, disabled=True)], 
         [sg.Button('Cloude Decomposition', expand_x=True, disabled=True)],
@@ -140,6 +145,8 @@ while True:
         new_mm = 1
         # print('Mueller Matrix Loaded')
         window['Mueller Matrix Plot'].update(disabled=False)
+        window['Polariscope View'].update(disabled=False)
+        window['PSG Only'].update(disabled=False)
         window['Magnitude'].update(disabled=False)
         window['DoLP / AoLP'].update(disabled=False)
         window['Lu-Chipman Retardance'].update(disabled=False)
@@ -155,6 +162,24 @@ while True:
             rgb.MMImagePlot(mm, -1, 1, is_cbox=is_cbox)
     
     
+    elif event == 'Polariscope View':
+        PSG_str = values['PSG']
+        PSA_str = values['PSA']
+        PSG = np.fromstring(values['PSG'], dtype=float, sep=',')
+        PSA = np.fromstring(values['PSA'], dtype=float, sep=',')
+        use_coords = values['Coordinates']
+        if use_coords == 1:
+            PSG = rgb.coordinates2stokes(PSG)
+            PSA = rgb.coordinates2stokes(PSA)
+        rgb.run_polariscope(mm, PSA, PSG, float(values['Min']), float(values['Max']), PSG_str, PSA_str, use_coords)
+    
+    
+    elif event == 'PSG Only':
+        PSG = np.fromstring(values['PSG'], dtype=float, sep=',')
+        if values['Coordinates'] == 1:
+            PSG = rgb.coordinates2stokes(PSG)
+        rgb.run_sim_psg(mm, PSG, colmap)
+
     
     elif event == 'Cloude Decomposition':
         if new_mm == 1: # Recalculate if there is new data

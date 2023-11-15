@@ -12,8 +12,6 @@ import matplotlib.animation as anim
 from matplotlib.colors import ListedColormap
 from rgb950_reconstruction import W_mat
 
-import scipy.linalg as slin
-
 plt.rcParams['animation.ffmpeg_path'] ='C:\\ffmpeg\\bin\\ffmpeg.exe'
 FFwriter = anim.FFMpegWriter(fps=10)
 
@@ -294,4 +292,100 @@ def plot_retardance_mag(ret_vec):
     im = ax.imshow(ret_mag, cmap='turbo', vmin = 0, vmax = np.pi, interpolation='none')
     cb = fig.colorbar(im,)
     cb.ax.set_yticks([0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi], ['0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$', r'$\frac{3 \pi}{4}$', r'$\pi$'], fontsize=12)
+
     
+def coordinates2stokes(lat_long):
+    # Convert to radians
+    latitude = np.radians(lat_long[0])
+    longitude = np.radians(lat_long[1])
+    
+    # Convert longitude/latitude to stokes
+    s0 = 1.0
+    s1 = np.cos(latitude) * np.cos(longitude)
+    s2 = np.cos(latitude) * np.sin(longitude)
+    s3 = np.sin(latitude)
+    stokes = np.array([s0, s1, s2, s3])
+    
+    return stokes
+
+
+def run_polariscope(MM, PSA, PSG, vmin, vmax, PSG_str, PSA_str, use_coords):
+    MM = MM.reshape([4,4,600,600])
+    MM /= MM[0,0,:,:]
+    S0_prime = np.zeros([600,600])  
+    PSG = PSG.reshape((4, 1))
+    
+    for i in range(600):
+        for j in range(600):
+            S0_prime[i,j] = np.dot(0.5*PSA, MM[:,:,i,j]@PSG)
+    
+    # Plot S0_prime
+    fig = plt.figure()
+    ax = plt.subplot()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    im = ax.imshow(S0_prime, cmap='gray', vmin=vmin, vmax=vmax, interpolation='none')
+    cb = fig.colorbar(im)
+    fig.suptitle(r'Polariscope View $S_0$')
+    if use_coords == 1:
+        ax.set_title(f'PSG lat/long: ({PSG_str})   PSA lat/long: ({PSA_str})', fontsize=10)
+    else:
+        ax.set_title(f'PSG Stokes: ({PSG_str})   PSA Stokes: ({PSA_str})', fontsize=10)
+    
+    # Poincare Sphere
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    u = np.linspace(0, 2 * np.pi, 20)
+    v = np.linspace(0, np.pi, 20)
+    xgrid = np.outer(np.cos(u), np.sin(v))
+    ygrid = np.outer(np.sin(u), np.sin(v))
+    zgrid = np.outer(np.ones(np.size(u)), np.cos(v))
+    ax.plot_wireframe(xgrid, ygrid, zgrid, color='gray', alpha=0.5, linewidth=0.5)
+    ax.scatter(PSG[1], PSG[2], PSG[3], color='b', s=100, label='PSG')
+    ax.scatter(PSA[1], PSA[2], PSA[3], color='r', s=100, label='PSA')
+    
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_xlabel(r'$S_1$')
+    ax.set_ylabel(r'$S_2$')
+    ax.set_zlabel(r'$S_3$')
+    ax.set_title('Poincare Sphere')
+    ax.legend()
+    ax.grid(False)
+    plt.show()
+    
+    
+def run_sim_psg(MM, PSG, colmap):
+    MM = MM.reshape([4,4,600,600])
+    MM = MM/MM[0,0,:,:]
+    product = np.zeros([4,600,600])  
+    PSG = np.squeeze(PSG)
+    vmin = -1
+    vmax = 1
+    
+    # Multiply MM by PSG vector
+    for i in range(600):
+        for j in range(600):
+            product[:,i,j] = MM[:,:,i,j]@PSG
+    
+    # Plot results
+    fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(12,3))
+    im0 = axs[0].imshow(product[0,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
+    im1 = axs[1].imshow(product[1,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
+    im2 = axs[2].imshow(product[2,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
+    im3 = axs[3].imshow(product[3,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
+
+    axs[0].set_title(r'$S_0$')
+    axs[0].set_xticks([])
+    axs[0].set_yticks([])
+    axs[1].set_title(r'$S_1$')
+    axs[1].set_xticks([])
+    axs[1].set_yticks([])
+    axs[2].set_title(r'$S_2$')
+    axs[2].set_xticks([])
+    axs[2].set_yticks([])
+    axs[3].set_title(r'$S_3$')
+    axs[3].set_xticks([])
+    axs[3].set_yticks([])
+    cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
+    cb = fig.colorbar(im1, cax=cax)
