@@ -146,6 +146,7 @@ def animRMMD(rmmd, outputfilename = 'recent_animation'):
     [Output]
         Matplotlib Animated plot of sequential eye images.
     '''
+    n_len = len(rmmd[:,0,0])-1
     fig = plt.figure(figsize=(4,4))
     fig.suptitle(outputfilename)
     ax = plt.subplot()
@@ -153,7 +154,7 @@ def animRMMD(rmmd, outputfilename = 'recent_animation'):
     ax.set_yticks([])
     im = ax.imshow(rmmd[0], animated=True)
     fig.colorbar(im)
-    ani = anim.FuncAnimation(fig, updateAnim, 40, fargs=(rmmd, im, ax))
+    ani = anim.FuncAnimation(fig, updateAnim, n_len, fargs=(rmmd, im, ax))
     ani.save('./rmmd_videos/{}.mp4'.format(outputfilename), writer = FFwriter)
     return ani
 
