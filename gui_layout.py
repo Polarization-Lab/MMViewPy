@@ -1,6 +1,7 @@
 import numpy as np
 import PySimpleGUI as sg
 
+sg.theme('Dark Grey 10')
 
 def window_main():
     '''
