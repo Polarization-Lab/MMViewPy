@@ -27,7 +27,6 @@ if not os.path.exists('./data/'):
 if not os.path.exists('./rmmd_videos'):
     os.makedirs('./rmmd_videos')
 
-sg.theme('Dark Grey 10')
 win = window_main()
 
 # Event handling loop
