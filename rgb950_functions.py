@@ -10,50 +10,54 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as anim
 from matplotlib.colors import ListedColormap
+
 from rgb950_reconstruction import W_mat
+
 
 plt.rcParams['animation.ffmpeg_path'] ='C:\\ffmpeg\\bin\\ffmpeg.exe'
 FFwriter = anim.FFMpegWriter(fps=10)
 
 #Blue to Red Color scale for S1 and S2
-colmap = np.zeros((255,3));
+colmap = np.zeros((255,3))
 # Red
-colmap[126:183,0]= np.linspace(0,1,57);
-colmap[183:255,0]= 1; 
+colmap[126:183,0] = np.linspace(0,1,57)
+colmap[183:255,0] = 1
 # Green
-colmap[0:96,1] = np.linspace(1,0,96);
-colmap[158:255,1]= np.linspace(0,1,97); 
+colmap[0:96,1] = np.linspace(1,0,96)
+colmap[158:255,1] = np.linspace(0,1,97)
 # Blue
-colmap[0:71,2] = 1;
-colmap[71:128,2]= np.linspace(1,0,57); 
-colmap2 = colmap[128:,:]
+colmap[0:71,2] = 1
+colmap[71:128,2] = np.linspace(1,0,57)
 colmap = ListedColormap(colmap)
 
-
 # wavelength params = [theta_A, delta_A, theta_LP, theta_G, delta_G]
-# wv_947 = [102.894, 68.2212, -1.17552, -104.486, 122.168]
-wv_947 = [-4.15989, 132.725, -0.329298, -13.3397, 117.562]
-wv_451 = [13.41, 143.13, -0.53, -17.02, 130.01]
-wv_524 = [13.41, 120.00, -0.53, -17.02, 124.55]
-wv_662 = [13.41, 94.780, -0.53, -17.02, 127.12]
+wv_dict = {
+    '947nm': [-4.15989, 132.725, -0.329298, -13.3397, 117.562],
+    #'947': [102.894, 68.2212, -1.17552, -104.486, 122.168]
+    '451nm': [13.41, 143.13, -0.53, -17.02, 130.01],
+    '524nm': [13.41, 120.00, -0.53, -17.02, 124.55],
+    '662nm': [13.41, 94.780, -0.53, -17.02, 127.12]
+}
 
-params = [wv_451, wv_524, wv_662, wv_947]
 
-def readRMMD(inputfilename):
-    raw = np.fromfile(inputfilename,np.int32).newbyteorder('>');
+def readRMMD(inputfilename, reg_img):
+    raw = np.fromfile(inputfilename,np.int32).newbyteorder('>')
     [num,xdim,ydim]=raw[1:4]
-    out=np.reshape(raw[5:5+num*xdim*ydim],[num,xdim,ydim])
+    if reg_img:
+        out=np.reshape(raw[4:4+num*xdim*ydim],[num,xdim,ydim])
+    else:
+        out=np.reshape(raw[5:5+num*xdim*ydim],[num,xdim,ydim])
     out = np.flip(out, axis=1)
     return out
 
 def readCMMI(inputfilename):
-    raw = np.fromfile(inputfilename,np.float32).newbyteorder('>');
+    raw = np.fromfile(inputfilename,np.float32).newbyteorder('>')
     M = np.zeros([16,600,600])
     for i in range(16):
         M[i,:,:] = np.flipud(raw[5+i::16][0:(600*600)].reshape([600,600]).T)
     return M
 
-def makeRMMDbin(inputfilepath, outputfilepath, wv = wv_947, psg_rot=False):
+def makeRMMDbin(inputfilepath, outputfilepath, wv, reg_img, psg_rot=False):
     '''
 
     Parameters
@@ -62,8 +66,8 @@ def makeRMMDbin(inputfilepath, outputfilepath, wv = wv_947, psg_rot=False):
         Full path to input rmmd file.
     outputfilename : string
         Path for binary file output.
-    wv : list, optional
-        Five index list of wavelength parameters. See the list at top of rgb950_functions for examples. The default is wv_947.
+    wv : string, optional
+        Wavelength in nanometers.
     psg_rot : TYPE, optional
         DESCRIPTION. The default is False.
 
@@ -72,15 +76,17 @@ def makeRMMDbin(inputfilepath, outputfilepath, wv = wv_947, psg_rot=False):
     None.
 
     '''
-    rmmd = readRMMD(inputfilepath)
+    rmmd = readRMMD(inputfilepath, reg_img)
     n_len = len(rmmd[:,0,0])-1
     rmmd = np.float32(np.reshape(rmmd[:n_len, :, :], [n_len, 360_000]))
-    W_plus = np.float32(np.linalg.pinv(W_mat(wv, n_len, psg_rot=psg_rot)))
+    W_plus = np.float32(np.linalg.pinv(W_mat(wv_dict[wv], n_len, psg_rot=psg_rot)))
     mm = np.matmul(W_plus, rmmd).reshape([16,600,600])
     mm.tofile(outputfilepath)
+    
+    return rmmd
 
-def makeMMbin(inputfilename,outputfilename):
-    raw = np.fromfile(inputfilename,np.float32).newbyteorder('>');
+def makeMMbin(inputfilename, outputfilename):
+    raw = np.fromfile(inputfilename,np.float32).newbyteorder('>')
     M = np.zeros([16,600,600],np.float32)
     for i in range(16):
         M[i,:,:] = np.flipud(raw[5+i::16][0:(600*600)].reshape([600,600]).T)
@@ -88,12 +94,41 @@ def makeMMbin(inputfilename,outputfilename):
     M2.tofile(outputfilename)
     
 def readMMbin(inputfilename):
-    raw = np.fromfile(inputfilename,np.float32);
+    raw = np.fromfile(inputfilename,np.float32)
     M = np.reshape(raw,[16,600,600])
     return M
 
-def MMImagePlot(MM,minval=-1,maxval=1, title='', is_cbox = 0, colmap=colmap):
-    f, axarr = plt.subplots(nrows = 4,ncols = 4,figsize=(6, 5))
+
+def updateAnim(frame, rmmd, im, ax):
+    im.set_array(rmmd[frame])
+    ax.set_title('{}'.format(frame))
+    return im
+
+def animRMMD(rmmd, outputfilename='recent_animation'):
+    '''
+    Animates Sequential images contained within an RMMD file. 
+    
+    [Input]
+        rmmd : (string) path from program to rmmd file to open.
+    
+    [Output]
+        Matplotlib Animated plot of sequential eye images.
+    '''
+    n_len = len(rmmd[:,0,0])-1
+    fig = plt.figure(figsize=(4,4))
+    fig.suptitle(outputfilename)
+    ax = plt.subplot()
+    ax.set_xticks([])
+    ax.set_yticks([])
+    im = ax.imshow(rmmd[0], animated=True)
+    fig.colorbar(im)
+    ani = anim.FuncAnimation(fig, updateAnim, n_len, fargs=(rmmd,im,ax))
+    ani.save('./rmmd_videos/{}.mp4'.format(outputfilename), writer=FFwriter)
+    return ani
+
+
+def MMImagePlot(MM, minval=-1, maxval=1, title='', is_cbox=0, colmap=colmap):
+    f, axarr = plt.subplots(nrows=4, ncols=4, figsize=(6, 5))
     f.suptitle(title, fontsize=20)
     
     MM = MM.reshape([4,4,600,600])
@@ -114,6 +149,7 @@ def MMImagePlot(MM,minval=-1,maxval=1, title='', is_cbox = 0, colmap=colmap):
     f.colorbar(im, cax=cbar_ax)
     # plt.tight_layout()
 
+
 def get_polarizance(MM):
     '''returns polarizance magnitude and orientation of input mueller matrix'''
     P = MM[[0,4,8],:,:]
@@ -131,66 +167,21 @@ def get_diattenuation(MM):
     
     return lin_mag, lin_orient
 
-def updateAnim(frame, rmmd, im, ax):
-    im.set_array(rmmd[frame])
-    ax.set_title('{}'.format(frame))
-    return im
-
-def animRMMD(rmmd, outputfilename = 'recent_animation'):
-    '''
-    Animates Sequential images contained within an RMMD file. 
-    
-    [Input]
-        rmmd : (string) path from program to rmmd file to open.
-    
-    [Output]
-        Matplotlib Animated plot of sequential eye images.
-    '''
-    n_len = len(rmmd[:,0,0])-1
-    fig = plt.figure(figsize=(4,4))
-    fig.suptitle(outputfilename)
+def plot_mag(MM, cmap='viridis', diatt=0, axtitle='Magnitude'):
+    MM = MM.reshape(16, 600, 600)
+    if diatt == 1:
+        mag, lin = get_diattenuation(MM)
+    else:
+        mag, lin = get_polarizance(MM)
+    fig = plt.figure()
     ax = plt.subplot()
+    ax.set_title(axtitle)
     ax.set_xticks([])
     ax.set_yticks([])
-    im = ax.imshow(rmmd[0], animated=True)
-    fig.colorbar(im)
-    ani = anim.FuncAnimation(fig, updateAnim, n_len, fargs=(rmmd, im, ax))
-    ani.save('./rmmd_videos/{}.mp4'.format(outputfilename), writer = FFwriter)
-    return ani
-
+    im = ax.imshow(mag, cmap=cmap, norm = matplotlib.colors.LogNorm(vmin = 0.001, vmax = 1.00, clip=True), interpolation='none')
+    cb = fig.colorbar(im, )
+    cb.ax.set_yticks([0.01, 0.1, 1.0], ['1 %', '10 %', '100 %'], fontsize=12)
     
-
-
-def RetardanceVector(MM):
-    m00 = MM[0,0]
-    M = MM/m00
-    D = M[0,1:]
-    Dmag = np.linalg.norm(D)
-    x = 1-Dmag**2
-    x = np.where(x<0, 0, x)
-    mD = np.sqrt(x)*np.identity(3) + (1-np.sqrt(x))*np.outer(D/Dmag,D/Dmag)
-    MD = np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
-    Mprime = M@np.linalg.inv(MD)
-    PDelta = Mprime[1:,0]
-    [l1,l2,l3] = np.linalg.eigvals(Mprime[1:,1:]@Mprime[1:,1:].T)
-    if np.linalg.det(Mprime[1:,1:]) > 0:
-        mDelta = np.real((np.linalg.inv(Mprime[1:,1:]@Mprime[1:,1:].T + (np.sqrt(l1*l2) + np.sqrt(l2*l3) + np.sqrt(l3*l1))*np.eye(3))@((np.sqrt(l1)+np.sqrt(l2)+np.sqrt(l3))*Mprime[1:,1:]@Mprime[1:,1:].T + np.sqrt(l1*l2*l3)*np.eye(3))))
-    else:
-        mDelta = -np.real((np.linalg.inv(Mprime[1:,1:]@Mprime[1:,1:].T + (np.sqrt(l1*l2) + np.sqrt(l2*l3) + np.sqrt(l3*l1))*np.eye(3))@((np.sqrt(l1)+np.sqrt(l2)+np.sqrt(l3))*Mprime[1:,1:]@Mprime[1:,1:].T + np.sqrt(l1*l2*l3)*np.eye(3))))
-       
-    MDelta = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((PDelta[:,np.newaxis],mDelta),axis=1)))
-    MR = np.linalg.inv(MDelta)@Mprime;
-    MR = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((np.zeros(3)[:,np.newaxis],MR[1:,1:]),axis=1)))
-    mR = MR[1:,1:];
-    Tr = np.trace(MR)/2 -1
-    if Tr < -1:
-        Tr = -1
-    elif Tr > 1:
-        Tr = 1
-    R = np.arccos(Tr)
-    Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR), np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR), np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
-    return Rvec
-
 def plot_aolp(MM, cmap='hsv', diatt = 0):
     MM = MM.reshape(4,4, 600, 600)
     if diatt == 1:
@@ -233,24 +224,38 @@ def plot_aolp(MM, cmap='hsv', diatt = 0):
     cb2.ax.set_yticks([0, 45, 90, 135, 180], [r'$0\degree$', r'$45\degree$', '$90\degree$', r'$135\degree$', r'$180\degree$'], fontsize=12)
     # cb.ax.set_yticks([-90, -45, 0, 45, 90], [r'$-90\degree$', r'$-45\degree$', '$0\degree$', r'$45\degree$', r'$90\degree$'], fontsize=12)
    
-def plot_mag(MM, cmap='viridis', diatt=0, axtitle='Magnitude'):
-    MM = MM.reshape(16, 600, 600)
-    if diatt == 1:
-        mag, lin = get_diattenuation(MM)
+    
+def RetardanceVector(MM):
+    m00 = MM[0,0]
+    M = MM/m00
+    D = M[0,1:]
+    Dmag = np.linalg.norm(D)
+    x = 1-Dmag**2
+    x = np.where(x<0, 0, x)
+    mD = np.sqrt(x)*np.identity(3) + (1-np.sqrt(x))*np.outer(D/Dmag,D/Dmag)
+    MD = np.vstack((np.concatenate(([1],D)),np.concatenate((D[:,np.newaxis],mD),axis=1)))
+    Mprime = M@np.linalg.inv(MD)
+    PDelta = Mprime[1:,0]
+    [l1,l2,l3] = np.linalg.eigvals(Mprime[1:,1:]@Mprime[1:,1:].T)
+    if np.linalg.det(Mprime[1:,1:]) > 0:
+        mDelta = np.real((np.linalg.inv(Mprime[1:,1:]@Mprime[1:,1:].T + (np.sqrt(l1*l2) + np.sqrt(l2*l3) + np.sqrt(l3*l1))*np.eye(3))@((np.sqrt(l1)+np.sqrt(l2)+np.sqrt(l3))*Mprime[1:,1:]@Mprime[1:,1:].T + np.sqrt(l1*l2*l3)*np.eye(3))))
     else:
-        mag, lin = get_polarizance(MM)
-    fig = plt.figure()
-    ax = plt.subplot()
-    ax.set_title(axtitle)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    im = ax.imshow(mag, cmap=cmap, norm = matplotlib.colors.LogNorm(vmin = 0.001, vmax = 1.00, clip=True), interpolation='none')
-    cb = fig.colorbar(im, )
-    cb.ax.set_yticks([0.01, 0.1, 1.0], ['1 %', '10 %', '100 %'], fontsize=12)
-
+        mDelta = -np.real((np.linalg.inv(Mprime[1:,1:]@Mprime[1:,1:].T + (np.sqrt(l1*l2) + np.sqrt(l2*l3) + np.sqrt(l3*l1))*np.eye(3))@((np.sqrt(l1)+np.sqrt(l2)+np.sqrt(l3))*Mprime[1:,1:]@Mprime[1:,1:].T + np.sqrt(l1*l2*l3)*np.eye(3))))
+       
+    MDelta = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((PDelta[:,np.newaxis],mDelta),axis=1)))
+    MR = np.linalg.inv(MDelta)@Mprime
+    MR = np.vstack((np.concatenate(([1],np.zeros(3))),np.concatenate((np.zeros(3)[:,np.newaxis],MR[1:,1:]),axis=1)))
+    mR = MR[1:,1:]
+    Tr = np.trace(MR)/2 -1
+    if Tr < -1:
+        Tr = -1
+    elif Tr > 1:
+        Tr = 1
+    R = np.arccos(Tr)
+    Rvec = R/(2*np.sin(R))*np.array([np.sum(np.array([[0,0,0],[0,0,1],[0,-1,0]]) * mR), np.sum(np.array([[0,0,-1],[0,0,0],[1,0,0]]) * mR), np.sum(np.array([[0,1,0],[-1,0,0],[0,0,0]]) * mR)])
+    return Rvec
 
 def plot_retardance_linear(ret_vec):
-    
     ret_vec = ret_vec.reshape([600, 600, 3])
     lin_ret = np.zeros([600,600])
     major_axis = np.zeros([600,600])
@@ -277,9 +282,7 @@ def plot_retardance_linear(ret_vec):
     cb2 = fig.colorbar(im2,shrink=0.8)
     cb2.ax.set_yticks([-np.pi/2, -np.pi/4, 0, np.pi/4, np.pi/2], [r'$-\frac{\pi}{2}$', r'$-\frac{\pi}{4}$', '0', r'$\frac{\pi}{4}$', r'$\frac{\pi}{2}$'], fontsize=12)
     
-
 def plot_retardance_mag(ret_vec):
-    
     ret_mag = np.zeros([360_000])
     for jj in range(len(ret_mag)):
         ret_mag[jj] = np.linalg.norm(ret_vec[jj,:])
@@ -309,8 +312,7 @@ def coordinates2stokes(lat_long):
     
     return stokes
 
-
-def run_polariscope(MM, PSA, PSG, vmin, vmax, PSG_str, PSA_str, use_coords):
+def run_polariscope(MM, PSA, PSG, PSG_str, PSA_str, use_coords, vmin=0, vmax=1):
     MM = MM.reshape([4,4,600,600])
     MM /= MM[0,0,:,:]
     S0_prime = np.zeros([600,600])  
@@ -326,7 +328,7 @@ def run_polariscope(MM, PSA, PSG, vmin, vmax, PSG_str, PSA_str, use_coords):
     ax.set_xticks([])
     ax.set_yticks([])
     im = ax.imshow(S0_prime, cmap='gray', vmin=vmin, vmax=vmax, interpolation='none')
-    cb = fig.colorbar(im)
+    fig.colorbar(im)
     fig.suptitle(r'Polariscope View $S_0$')
     if use_coords == 1:
         ax.set_title(f'PSG lat/long: ({PSG_str})   PSA lat/long: ({PSA_str})', fontsize=10)
@@ -355,8 +357,7 @@ def run_polariscope(MM, PSA, PSG, vmin, vmax, PSG_str, PSA_str, use_coords):
     ax.grid(False)
     plt.show()
     
-    
-def run_sim_psg(MM, PSG, colmap):
+def run_sim_psg(MM, PSG):
     MM = MM.reshape([4,4,600,600])
     MM = MM/MM[0,0,:,:]
     product = np.zeros([4,600,600])  
@@ -372,9 +373,9 @@ def run_sim_psg(MM, PSG, colmap):
     # Plot results
     fig, axs = plt.subplots(nrows=1, ncols=4, figsize=(12,3))
     im0 = axs[0].imshow(product[0,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
-    im1 = axs[1].imshow(product[1,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
-    im2 = axs[2].imshow(product[2,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
-    im3 = axs[3].imshow(product[3,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
+    axs[1].imshow(product[1,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
+    axs[2].imshow(product[2,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
+    axs[3].imshow(product[3,:,:], cmap=colmap, vmin=vmin, vmax=vmax, interpolation='none')
 
     axs[0].set_title(r'$S_0$')
     axs[0].set_xticks([])
@@ -389,4 +390,4 @@ def run_sim_psg(MM, PSG, colmap):
     axs[3].set_xticks([])
     axs[3].set_yticks([])
     cax = fig.add_axes([0.92, 0.15, 0.02, 0.7])
-    cb = fig.colorbar(im1, cax=cax)
+    fig.colorbar(im0, cax=cax)
